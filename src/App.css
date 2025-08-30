@@ -1,0 +1,115 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+
+
+.main-head{
+  width: 100%;
+  height: 54px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: transparent;
+  z-index: 9999;
+  padding: 0 15px;
+}
+.main-head.slidedown{
+  position: fixed;
+  background: #fff;
+  animation: slidedown .3s forwards;
+}
+@keyframes slidedown{
+  from{
+      top: -250px;
+  }
+  to{
+      top: 0;
+      box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.2);
+  }
+}
+.main-head .main-menu{
+  width: 100%;
+  height: 54px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.main-head .main-menu .logo{
+  width: 30%;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+}
+.main-head .main-menu .nav-menu{
+  width: 70%;
+}
+.main-head .main-menu .nav-menu .nav-list{
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+.main-head .main-menu .nav-menu .nav-list .nav-list-item{
+  padding: 15px 15px;
+  list-style: none;
+}
+.main-head .main-menu .nav-menu .nav-list .nav-list-item .nav-link{
+  display: inline-block;
+  text-decoration: none;
+  color: #fff;
+  font-size: 15px;
+  font-family: 'Montserrat', sans-serif;
+  line-height: 20px;
+  font-weight: 500;
+  transition: all .1s ease;
+}
+.main-head.slidedown .main-menu .nav-menu .nav-list .nav-list-item .nav-link {
+  color: #000;
+}
+.main-head .main-menu .nav-menu .nav-list .nav-list-item .nav-link:hover{
+  color: #414cec;
+  text-decoration: underline;
+}
+.main-head.slidedown .main-menu .logo{
+  color: #000;
+}
+.main-head .main-menu .toggle-btn{
+  display: none;
+}

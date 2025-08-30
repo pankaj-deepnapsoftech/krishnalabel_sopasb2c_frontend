@@ -1,0 +1,3 @@
+"inventory_category","name","color", "code", "product_id","uom","category","current_stock","min_stock","max_stock","price","hsn_code","item_type","product_or_service","sub_category","regular_buying_price","wholesale_buying_price","mrp","dealer_price","distributor_price"
+"indirect","Product 1","red", "red123", PRD01","kg","raw materials",50,10,100,10000,"PRD9882","buy","product","","","","","",""
+"direct","Product 2","blue", "blue123", "PRD02","pcs","raw materials",40,10,90,11000,"PRD9881","buy","product","","","","","",""

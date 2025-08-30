@@ -1,0 +1,253 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
+
+*{
+  /* font-family: "Nunito", sans-serif; */
+  font-family: "Open Sans", sans-serif;
+  /* font-family: "Inter", sans-serif; */
+  /* font-family: "Lato", sans-serif; */
+  /* font-family: "Noto Sans", sans-serif; */
+  /* font-family: "Red Hat Display", sans-serif; */
+  /* font-family: "Varela Round", sans-serif; */
+}
+
+body{
+    /* background-color: #b3b3b3b3 !important; */
+    background-color: #fbfbfb !important;
+}
+
+#root{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100vh;
+}
+
+.subscription-font{
+    font-family: "Rubik", sans-serif;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    /* display: none; <- Crashes Chrome on hover */
+    -webkit-appearance: none;
+    margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
+}
+
+input[type=number] {
+    -moz-appearance: textfield; /* Firefox */
+}
+
+.finished-goods-header {
+    background-color: #38b2ac; /* teal.500 color */
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
+    padding: 1rem; /* Equivalent to p={4} in Chakra UI */
+  }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+::-webkit-scrollbar{
+    background-color: transparent;
+    width: 8px;
+    height: 8px;
+}
+
+
+:hover::-webkit-scrollbar-thumb {
+    @apply bg-table-color rounded-full
+}
+
+@keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes wave {
+    0% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(-10deg);
+    }
+    50% {
+      transform: rotate(10deg);
+    }
+    75% {
+      transform: rotate(-10deg);
+    }
+    100% {
+      transform: rotate(0deg);
+    }
+  }
+  
+  .waving-hand {
+    display: inline-block;
+    animation: wave 1.5s ;
+    transform-origin: 70% 70%; /* Adjust origin for natural wave motion */
+  }
+
+  .filter-blue {
+    filter: invert(36%) sepia(96%) saturate(312%) hue-rotate(181deg) brightness(92%) contrast(89%);
+  }
+
+  .filter-green {
+    filter: invert(45%) sepia(90%) saturate(390%) hue-rotate(100deg) brightness(90%) contrast(85%);
+  }
+  
+  .filter-orange {
+    filter: invert(55%) sepia(90%) saturate(700%) hue-rotate(25deg) brightness(95%) contrast(90%);
+  }
+
+  @keyframes moveDown {
+    0% {
+      transform: translateY(-100%); /* Start above the viewport */
+      opacity: 0; /* Initially hidden */
+    }
+    100% {
+      transform: translateY(0); /* Move to its original position */
+      opacity: 1; /* Fully visible */
+    }
+  }
+  
+  .img-move-down {
+    animation: moveDown 2s ease-in-out forwards; /* Smooth top-to-bottom animation */
+    opacity: 0; /* Prevent flickering before animation starts */
+  }
+  
+  @keyframes slideIn {
+    0% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .img-slide-in {
+    animation: slideIn 1s ease-in-out forwards;
+    opacity: 0; 
+    animation-delay: 2s; 
+  }
+
+  @keyframes bounceScale {
+    0% {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  .img-bounce-scale {
+    animation: bounceScale 2s ease-out forwards; /* Smooth bounce and scale animation */
+    opacity: 0; 
+    animation-delay: 3s;
+  }
+
+
+  /* styles.css */
+
+/* Horizontally and vertically center text in all cells */
+.ag-theme-alpine .ag-cell {
+  display: flex;
+  align-items: center;   /* vertical alignment: center */
+  justify-content: left; /* horizontal alignment: center */
+  padding: 0; /* optional: reduce padding */
+  text-align: left;
+}
+
+/* To align text at the top: */
+.ag-theme-alpine .ag-cell.align-top {
+  align-items: flex-start;
+}
+
+/* To align text at the bottom: */
+.ag-theme-alpine .ag-cell.align-bottom {
+  align-items: flex-end;
+}
+
+/* --- Header Cell Styling --- */
+.ag-theme-alpine .ag-header-cell-label {
+  display: flex;
+  align-items: center;       /* Vertical center */
+  justify-content: left;   /* Horizontal center */
+  text-align: center;
+  height: 100%;
+  width: 100%;
+}
+
+/* Optional: Consistent font & padding */
+.ag-theme-alpine .ag-header-cell {
+  padding: 0;
+  font-weight: bold;
+}
+
+.ag-header-cell-label {
+  white-space: normal !important;
+  line-height: 1.2;
+  padding: 10px;
+}
+
+/* Add this to your CSS file */
+.ag-theme-alpine .ag-header-cell {
+  border: 1px solid #bfbfbf; /* You can customize the border style and color */
+}
+
+
+li:hover span:nth-child(2) {
+  opacity: 1;
+  pointer-events: auto;
+}
+li:hover span:nth-child(3) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+::selection {
+  background: #319795;
+  color: #fff; /* Optional: change text color on selection */
+}
+
+input:focus {
+  border-color: #319795; /* Change this to any color you prefer */
+  outline: #14b8a6; /* Optional: removes the default focus outline */
+}
+
+
+.custom-select option {
+  background-color: #59eca8;
+  /* your desired bg */
+  color: rgb(0, 0, 0);
+  /* text color */
+}
