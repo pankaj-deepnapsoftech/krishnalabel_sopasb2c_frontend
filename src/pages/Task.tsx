@@ -1,5 +1,10 @@
 //@ts-nocheck
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+} from "react";
 import {
   Box,
   VStack,
@@ -24,7 +29,13 @@ import {
   Spinner,
   Img,
 } from "@chakra-ui/react";
-import { FaCheck, FaCloudUploadAlt, FaUpload } from "react-icons/fa";
+import {
+  FaCheck,
+  FaCloudUploadAlt,
+  FaUpload,
+  FaSearch,
+  FaTimes,
+} from "react-icons/fa";
 import { MdOutlineRefresh } from "react-icons/md";
 import axios, { Axios } from "axios";
 import { useCookies } from "react-cookie";
@@ -35,7 +46,7 @@ import UploadInvoice from "./UploadInvoice";
 import PaymentModal from "./PaymentModal";
 import { IoEyeSharp } from "react-icons/io5";
 import TokenAmount from "./TokenAmount";
-import { socket } from '../socket';
+import { socket } from "../socket";
 const Task = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedTask, setSelectedTask] = useState(null);
@@ -61,7 +72,7 @@ const Task = () => {
   const [paymentFor, setPaymentFor] = useState("");
   const [sampleimagefile, setsampleFile] = useState("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const[limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(10);
   const [selectedData, setSelectedData] = useState<any>([]);
   const [filters, setFilters] = useState({
     status: "",
@@ -70,15 +81,19 @@ const Task = () => {
     productName: "",
     search: "",
   });
-  const [halfAmountId, sethalfAmountId] = useState("")
+  const [debouncedSearchKey, setDebouncedSearchKey] = useState("");
+  const [halfAmountId, sethalfAmountId] = useState("");
   const [halfAmount, sethalfAmount] = useState(null);
+  const [savedScrollPosition, setSavedScrollPosition] = useState(0);
+  const [shouldRestoreScroll, setShouldRestoreScroll] = useState(false);
   const {
     isOpen: isAccountpreviewOpen,
     onOpen: onAccountpreviewOpen,
     onClose: onAccountpreviewClose,
   } = useDisclosure();
 
-  const { isOpen: isViewHalfPaymentssOpen,
+  const {
+    isOpen: isViewHalfPaymentssOpen,
     onOpen: onViewHalfPaymentssOpen,
     onClose: onViewHalfPaymentssClose,
   } = useDisclosure();
@@ -158,20 +173,52 @@ const Task = () => {
     const handleChangesApply = (data) => {
       if (data === true) {
         console.log("fetchTaskData");
+        // Save scroll position before fetching
+        const scrollY = window.scrollY;
+        setSavedScrollPosition(scrollY);
+        setShouldRestoreScroll(true);
         fetchTasks();
-        socket.off('changesapply', handleChangesApply); // Remove listener after first call
+        socket.off("changesapply", handleChangesApply); // Remove listener after first call
       }
     };
-    socket.on('changesapply', handleChangesApply);
+    socket.on("changesapply", handleChangesApply);
 
     return () => {
-      socket.off('changesapply', handleChangesApply); // Prevent duplication on rerender
+      socket.off("changesapply", handleChangesApply); // Prevent duplication on rerender
     };
   });
 
   useEffect(() => {
     fetchTasks();
   }, [cookies?.access_token, page, limit]);
+
+  // Restore scroll position after tasks update
+  useLayoutEffect(() => {
+    if (shouldRestoreScroll && savedScrollPosition > 0 && !isLoading) {
+      window.scrollTo({
+        top: savedScrollPosition,
+        behavior: "auto", // use "auto" for instant
+      });
+
+      // reset only the flag, not the position
+      setShouldRestoreScroll(false);
+    }
+  }, [tasks, isLoading, shouldRestoreScroll, savedScrollPosition]);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchKey(filters.search);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
+  // Clear search function
+  const clearSearch = () => {
+    setFilters({ ...filters, search: "" });
+    setDebouncedSearchKey("");
+  };
 
   const handleFilterChange = (field, value) => {
     setFilters({ ...filters, [field]: value });
@@ -190,13 +237,46 @@ const Task = () => {
   };
 
   const filteredTasks = tasks.filter((task) => {
-    return (
-      (!filters.status || task.design_status === filters.status) &&
-      (!filters.date || task.date === filters.date) &&
-      (!filters.search ||
-        task.productName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        task.assignedBy.toLowerCase().includes(filters.search.toLowerCase()))
-    );
+    // Apply status filter
+    const matchesStatus =
+      !filters.status || task.design_status?.toLowerCase() === filters.status;
+
+    // Apply date filter
+    const matchesDate = !filters.date || task.date === filters.date;
+
+    // Apply simple search across all fields
+    const matchesSearch =
+      !debouncedSearchKey ||
+      task.productName
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.assignedBy
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.customer_name
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.company_name
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.assined_process
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.design_status
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.assinedby_comment
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.customer_design_comment
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.sale_by?.toLowerCase()?.includes(debouncedSearchKey.toLowerCase()) ||
+      task.productPrice
+        ?.toLowerCase()
+        ?.includes(debouncedSearchKey.toLowerCase());
+
+    return matchesStatus && matchesDate && matchesSearch;
   });
 
   const handleOpenModal = (task) => {
@@ -251,7 +331,7 @@ const Task = () => {
       );
       toast.success("File uploaded successfully.");
       onClose();
-      socket.emit('notificationdatachange', true);
+      socket.emit("notificationdatachange", true);
     } catch (error) {
       console.error("Error uploading file:", error);
 
@@ -264,29 +344,37 @@ const Task = () => {
   const handleAccept = async (id) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    // Save scroll position
+    setSavedScrollPosition(window.scrollY);
+    setShouldRestoreScroll(true);
+
     try {
       const response = await axios.patch(
         `${process.env.REACT_APP_BACKEND_URL}assined/update-status/${id}`,
         { isCompleted: "UnderProcessing" },
-        {
-          headers: {
-            Authorization: `Bearer ${cookies?.access_token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${cookies?.access_token}` } }
       );
+
       toast.success(response.data.message);
-      socket.emit('notificationdatachange', true);
-      fetchTasks();
+      socket.emit("notificationdatachange", true);
+
+      await fetchTasks();
     } catch (error) {
       console.log(error);
-
       toast.error(error);
+      setShouldRestoreScroll(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDone = async (id) => {
+    // Save current scroll position
+    const scrollY = window.scrollY;
+    setSavedScrollPosition(scrollY);
+    setShouldRestoreScroll(true);
+
     try {
       const response = await axios.patch(
         `${process.env.REACT_APP_BACKEND_URL}assined/update-status/${id}`,
@@ -298,14 +386,15 @@ const Task = () => {
         }
       );
 
-
       toast.success(response.data.message);
-      socket.emit('notificationdatachange', true);
+      socket.emit("notificationdatachange", true);
       fetchTasks();
     } catch (error) {
       console.log(error);
-
       toast.error(error);
+      // Reset flags on error
+      setSavedScrollPosition(0);
+      setShouldRestoreScroll(false);
     }
   };
 
@@ -358,106 +447,152 @@ const Task = () => {
     const data = {
       half_payment: halfAmount,
       half_payment_status: "pending",
-    }
+    };
     try {
-      half_payment.onClose()
-      const res = await axios.put(`${process.env.REACT_APP_BACKEND_URL}purchase/update/${halfAmountId.sale_id}`, data, {
-        headers: {
-          Authorization: `Bearer ${cookies?.access_token}`,
-        },
-      })
+      half_payment.onClose();
+      const res = await axios.put(
+        `${process.env.REACT_APP_BACKEND_URL}purchase/update/${halfAmountId.sale_id}`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${cookies?.access_token}`,
+          },
+        }
+      );
       toast.success("Half Amount added");
-      socket.emit('notificationdatachange', true);
+      socket.emit("notificationdatachange", true);
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-  }
+  };
 
   const handleVerifyImage = async () => {
     const data = {
       half_payment_status: "Paid",
-      half_payment_approve: true
-    }
-    onViewHalfPaymentssClose()
+      half_payment_approve: true,
+    };
+    onViewHalfPaymentssClose();
     try {
-      const res = await axios.put(`${process.env.REACT_APP_BACKEND_URL}purchase/update/${halfAmountId.sale_id}`, data, {
-        headers: {
-          Authorization: `Bearer ${cookies?.access_token}`,
-        },
-      })
-      toast.success("Half amount Verify")
-      socket.emit('notificationdatachange', true);
+      const res = await axios.put(
+        `${process.env.REACT_APP_BACKEND_URL}purchase/update/${halfAmountId.sale_id}`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${cookies?.access_token}`,
+          },
+        }
+      );
+      toast.success("Half amount Verify");
+      socket.emit("notificationdatachange", true);
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-  }
+  };
 
   return (
     <div className="overflow-x-hidden">
-
       <div className="flex text-lg md:text-xl font-semibold items-center gap-y-1 pb-4">
         Tasks
       </div>
 
-      {/* Employees Page */}
-      <div className="w-full  flex justify-between gap-4 pb-2">
-        <div className="w-full">
-            <Input
-              placeholder="Search by Product or Manager"
-              fontSize="sm"
-              onChange={(e) => handleFilterChange("search", e.target.value)}
-              _focus={{
-                borderColor: "#0d9488", // or any Chakra color like "teal.400"
-                boxShadow: "0 0 0 1px #14b8a6" // optional for a ring-like effect
-              }}
-              transition="all 0.2s"
-            />
+      {/* Enhanced Search and Filters */}
+      <div className="flex flex-col gap-4 mb-4">
+        {/* Main Search Bar */}
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          {/* Simple Search Input */}
+          <div className="w-full relative">
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
+              <Input
+                placeholder="Search tasks..."
+                value={filters.search || ""}
+                onChange={(e) => handleFilterChange("search", e.target.value)}
+                className="pl-10 pr-10"
+                _focus={{
+                  borderColor: "#0d9488",
+                  boxShadow: "0 0 0 1px #14b8a6",
+                }}
+                transition="all 0.2s"
+                fontSize="sm"
+              />
+              {filters.search && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes size={14} />
+                </button>
+              )}
+            </div>
+            {filters.search && (
+              <div className="absolute z-10 mt-1 text-xs text-gray-500">
+                Found {filteredTasks.length} result
+                {filteredTasks.length !== 1 ? "s" : ""}
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 w-full md:w-auto">
+            <Button
+              fontSize={{ base: "14px", md: "14px" }}
+              paddingX={{ base: "10px", md: "12px" }}
+              onClick={fetchTasks}
+              leftIcon={<MdOutlineRefresh />}
+              color="#319795"
+              borderColor="#319795"
+              variant="outline"
+              className="w-full md:w-auto"
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
-        <div className="flex  justify-between gap-4">
+
+        {/* Filters Row */}
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <div className="flex flex-col md:flex-row gap-4 flex-1">
             <Select
               placeholder="Status"
-              width="25%"
+              value={filters.status}
               fontSize="sm"
               onChange={(e) => handleFilterChange("status", e.target.value)}
+              className="w-full md:w-[150px]"
             >
               <option value="pending">Pending</option>
+              <option value="underprocessing">Under Processing</option>
               <option value="completed">Completed</option>
             </Select>
+
             <Input
               type="date"
               fontSize="sm"
-              w="200px"
+              value={filters.date}
               onChange={(e) => handleFilterChange("date", e.target.value)}
+              className="w-full md:w-[200px]"
             />
-          <Button
-            fontSize={{ base: "14px", md: "14px" }}
-            paddingX={{ base: "10px", md: "12px" }}
-            onClick={fetchTasks}
-            leftIcon={<MdOutlineRefresh />}
-            color="#319795"
-            borderColor="#319795"
-            variant="outline"
-          >
-            Refresh
-          </Button>
-          <Select
-            value={limit}
-            onChange={(e) => {
-              const newSize = Number(e.target.value);
-              setLimit(newSize);
-            }}
-            width="80px"
-          >
-            {[10, 20, 50, 100, 100000].map((size) => (
-              <option key={size} value={size}>
-                {size === 100000 ? "All" : size}
-              </option>
-            ))}
-          </Select>
+          </div>
+
+          <div className="flex gap-2">
+            <Select
+              value={limit}
+              onChange={(e) => {
+                const newSize = Number(e.target.value);
+                setLimit(newSize);
+              }}
+              size="sm"
+              className="w-[80px]"
+            >
+              {[10, 20, 50, 100, 100000].map((size) => (
+                <option key={size} value={size}>
+                  {size === 100000 ? "All" : size}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
-        
       </div>
-      
+
       {/* <HStack className="flex justify-between items-center mb-5 mt-5">
         <Text className="text-lg font-bold">Tasks</Text>
         <HStack className="space-x-2">
@@ -535,7 +670,7 @@ const Task = () => {
         </Box>
       ) : (
         <VStack spacing={5}>
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <Box
               key={task._id}
               borderWidth="1px"
@@ -568,28 +703,30 @@ const Task = () => {
                 </Text>
 
                 <VStack align="start">
-                {["acc", "account", "accountant"].includes(
+                  {["acc", "account", "accountant"].includes(
                     role.toLowerCase()
                   ) ? (
                     <Badge
                       colorScheme={colorChange(task.design_status)}
                       fontSize="sm"
-                    > 
-                      <strong>Task:</strong> {task?.design_status}{task?.design_status !== "UnderProcessing" ? "D" : ""}
+                    >
+                      <strong>Task:</strong> {task?.design_status}
+                      {task?.design_status !== "UnderProcessing" ? "D" : ""}
                     </Badge>
-                  ) : <Badge
-                  colorScheme={colorChange(task.design_status)}
-                  fontSize="sm"
-                >
-                  <strong>Task:</strong> {task?.design_status}
-                </Badge>}
-                  
+                  ) : (
+                    <Badge
+                      colorScheme={colorChange(task.design_status)}
+                      fontSize="sm"
+                    >
+                      <strong>Task:</strong> {task?.design_status}
+                    </Badge>
+                  )}
 
                   {["acc", "account", "accountant", "dispatch", "dis"].includes(
                     role.toLowerCase()
                   ) &&
-                    task?.token_amt &&
-                    task?.token_status === false ? (
+                  task?.token_amt &&
+                  task?.token_status === false ? (
                     <Badge colorScheme="orange" fontSize="sm">
                       Token Amount : Pending
                     </Badge>
@@ -598,8 +735,8 @@ const Task = () => {
                   {["acc", "account", "accountant", "dispatch", "dis"].includes(
                     role.toLowerCase()
                   ) &&
-                    task?.token_amt &&
-                    task?.token_status ? (
+                  task?.token_amt &&
+                  task?.token_status ? (
                     <Badge colorScheme="green" fontSize="sm">
                       Token Amount : Paid
                     </Badge>
@@ -609,8 +746,7 @@ const Task = () => {
                     role.toLowerCase()
                   ) && task?.isTokenVerify === false ? (
                     <Badge colorScheme="orange" fontSize="sm">
-                      Token Verification :{" "}
-                      Pending
+                      Token Verification : Pending
                     </Badge>
                   ) : null}
 
@@ -618,8 +754,7 @@ const Task = () => {
                     role.toLowerCase()
                   ) && task?.isTokenVerify ? (
                     <Badge colorScheme="green" fontSize="sm">
-                      Token Verification :{" "}
-                      Verified
+                      Token Verification : Verified
                     </Badge>
                   ) : null}
 
@@ -627,11 +762,9 @@ const Task = () => {
                     role.toLowerCase()
                   ) && task?.allsale?.half_payment_status ? (
                     <Badge colorScheme="green" fontSize="sm">
-                      Half Payment Status :{" "}
-                      {task?.allsale?.half_payment_status}
+                      Half Payment Status : {task?.allsale?.half_payment_status}
                     </Badge>
                   ) : null}
-
 
                   {["acc", "account", "accountant", "dispatch", "dis"].includes(
                     role.toLowerCase()
@@ -673,12 +806,13 @@ const Task = () => {
                 gap={4}
               >
                 <VStack align="start" w={{ base: "100%", md: "48%" }}>
-                  {(role == "Accountant" || role == "Sales" || role == "admin") ? (
+                  {role == "Accountant" ||
+                  role == "Sales" ||
+                  role == "admin" ? (
                     <Text fontSize="sm">
                       <strong>Product Price:</strong> {task.productPrice}
                     </Text>
                   ) : null}
-
 
                   <Text fontSize="sm">
                     <strong>Quantity:</strong> {task.productQuantity}
@@ -707,20 +841,21 @@ const Task = () => {
                     <strong>Assigned Process:</strong> {task?.assined_process}
                   </Text>
                   {task?.assinedby_comment ? (
-                    <Text fontSize="sm" >
+                    <Text fontSize="sm">
                       <strong>Remarks:</strong> {task?.assinedby_comment}
                     </Text>
-
                   ) : null}
 
                   {task?.sample_bom_name ? (
                     <Text fontSize="sm" color="blue">
-                      <strong className="text-black"> Sample BOM Name:</strong> {task?.sample_bom_name}
+                      <strong className="text-black"> Sample BOM Name:</strong>{" "}
+                      {task?.sample_bom_name}
                     </Text>
                   ) : null}
                   {task?.bom_name ? (
                     <Text fontSize="sm" color="blue">
-                      <strong className="text-black">BOM Name:</strong> {task?.bom_name}
+                      <strong className="text-black">BOM Name:</strong>{" "}
+                      {task?.bom_name}
                     </Text>
                   ) : null}
                   {role != "Production" && task?.token_ss ? (
@@ -743,10 +878,13 @@ const Task = () => {
                   {role != "Production" && task?.allsale?.half_payment_image ? (
                     <Text
                       className="text-blue-500 underline text-sm cursor-pointer"
-                      onClick={() => { onViewHalfPaymentssOpen(); sethalfAmountId(task) }}
+                      onClick={() => {
+                        onViewHalfPaymentssOpen();
+                        sethalfAmountId(task);
+                      }}
                     >
                       {" "}
-                      View Half payment {" "}
+                      View Half payment{" "}
                     </Text>
                   ) : null}
                 </VStack>
@@ -758,6 +896,7 @@ const Task = () => {
                 <HStack className="space-x-3">
                   {task?.design_status === "Pending" ? (
                     <Button
+                      type="button"
                       colorScheme="teal"
                       size="sm"
                       onClick={() => handleAccept(task?.id)}
@@ -766,8 +905,6 @@ const Task = () => {
                       Accept Task
                     </Button>
                   ) : null}
-
-
 
                   {task?.bom.length === 2 ? (
                     <Badge colorScheme="green" fontSize="sm">
@@ -782,8 +919,6 @@ const Task = () => {
                       Create BOM
                     </Button>
                   )}
-
-
 
                   {task?.design_status != "Completed" ? (
                     <Button
@@ -805,10 +940,8 @@ const Task = () => {
                       Preview Sample Image
                     </Button>
                   ) : null}
-
                 </HStack>
               ) : ["accountant", "acc"].includes(role.toLowerCase()) ? (
-                
                 <HStack
                   justify="space-between"
                   mt={3}
@@ -818,6 +951,7 @@ const Task = () => {
                 >
                   {task?.design_status === "Pending" ? (
                     <Button
+                      type="button"
                       colorScheme="teal"
                       size="sm"
                       onClick={() => handleAccept(task?.id)}
@@ -856,22 +990,20 @@ const Task = () => {
                     </Button>
                   ) : null}
 
-                  {
-                      task?.isSampleApprove &&
+                  {task?.isSampleApprove && (
                     <Button
                       bgColor="white"
                       _hover={{ bgColor: "blue.500" }}
                       className="border border-blue-500 hover:text-white"
                       onClick={() => {
                         half_payment.onOpen();
-                        sethalfAmountId(task)
-                      }
-                      }
+                        sethalfAmountId(task);
+                      }}
                       width={{ base: "full", sm: "auto" }}
                     >
                       Add half Payment
                     </Button>
-                  }
+                  )}
 
                   {task?.customer_pyement_ss ? (
                     <Button
@@ -894,9 +1026,6 @@ const Task = () => {
                     </Button>
                   ) : null}
 
-
-
-
                   <Text fontSize="sm">
                     <strong>Date:</strong> {task.date}
                   </Text>
@@ -912,11 +1041,12 @@ const Task = () => {
                   <VStack align="start">
                     {task?.design_status === "Pending" ? (
                       <Button
+                        type="button"
                         leftIcon={<FaCheck />}
                         colorScheme="teal"
                         size="sm"
                         onClick={() => handleAccept(task?.id)}
-                            disabled={isSubmitting}
+                        disabled={isSubmitting}
                       >
                         Accept Task
                       </Button>
@@ -978,14 +1108,12 @@ const Task = () => {
                       <Text color="red.500">
                         Feedback: {task.sale_design_comment}
                       </Text>
-
                     </VStack>
                   ) : null}
 
                   <Text fontSize="sm">
                     <strong>Date:</strong> {task.date}
                   </Text>
-
                 </HStack>
               )}
             </Box>
@@ -1110,7 +1238,10 @@ const Task = () => {
           <ModalHeader>Sample Image Preview</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            Click to view the <a href={sampleimagefile} target="_blank">Sample image</a>
+            Click to view the{" "}
+            <a href={sampleimagefile} target="_blank">
+              Sample image
+            </a>
           </ModalBody>
           <ModalFooter>
             <Button
@@ -1199,7 +1330,11 @@ const Task = () => {
                 type="number"
                 id="number-input"
                 placeholder="Enter a number"
-                value={halfAmountId?.allsale?.half_payment ? halfAmountId?.allsale?.half_payment : halfAmount}
+                value={
+                  halfAmountId?.allsale?.half_payment
+                    ? halfAmountId?.allsale?.half_payment
+                    : halfAmount
+                }
                 onChange={(e) => sethalfAmount(e.target.value)}
               />
             </FormControl>
@@ -1245,17 +1380,29 @@ const Task = () => {
           <ModalBody>
             <div>
               <div>
-                <h3>View half payment proof. &nbsp;
-                {halfAmountId?.allsale?.half_payment_image &&  
-                  <a href={halfAmountId?.allsale?.half_payment_image} target="_blank">
-                     Click to view
-                  </a>}
+                <h3>
+                  View half payment proof. &nbsp;
+                  {halfAmountId?.allsale?.half_payment_image && (
+                    <a
+                      href={halfAmountId?.allsale?.half_payment_image}
+                      target="_blank"
+                    >
+                      Click to view
+                    </a>
+                  )}
                 </h3>
               </div>
 
-              {!halfAmountId?.allsale?.half_payment_approve && <div className="py-5 text-center " >
-                <button onClick={handleVerifyImage} className="py-2 px-3 bg-green-500 rounded-lg font-semibold text-white  " >Verify</button>
-              </div>}
+              {!halfAmountId?.allsale?.half_payment_approve && (
+                <div className="py-5 text-center ">
+                  <button
+                    onClick={handleVerifyImage}
+                    className="py-2 px-3 bg-green-500 rounded-lg font-semibold text-white  "
+                  >
+                    Verify
+                  </button>
+                </div>
+              )}
             </div>
           </ModalBody>
           <ModalFooter>
@@ -1272,7 +1419,11 @@ const Task = () => {
         </ModalContent>
       </Modal>
 
-      <Pagination page={page} setPage={setPage} length={tasks?.length} />
+      <Pagination
+        page={page}
+        setPage={setPage}
+        length={filteredTasks?.length}
+      />
     </div>
   );
 };

@@ -489,6 +489,7 @@ const Dashboard: React.FC = () => {
                     role &&
                     (role === "admin" ||
                       role === "Inventory " ||
+                      role === "Accountant" ||
                       role.toLowerCase()?.includes("product"))
                       ? processes?.["raw material approval pending"] || 0
                       : 0
@@ -505,6 +506,7 @@ const Dashboard: React.FC = () => {
                     role &&
                     (role === "admin" ||
                       role === "Inventory " ||
+                      role === "Accountant" ||
                       role.toLowerCase()?.includes("product"))
                       ? processes?.["raw materials approved"] || 0
                       : 0
@@ -573,6 +575,7 @@ const Dashboard: React.FC = () => {
                         role &&
                         (role === "admin" ||
                           role === "Inventory " ||
+                          role === "Accountant" ||
                           role.toLowerCase()?.includes("product"))
                           ? directInventory?.total_product_count
                           : 0
@@ -589,6 +592,7 @@ const Dashboard: React.FC = () => {
                         role &&
                         (role === "admin" ||
                           role === "Inventory " ||
+                          role === "Accountant" ||
                           role.toLowerCase()?.includes("product"))
                           ? `₹ ${directInventory?.total_stock_price}/-`
                           : 0
@@ -604,6 +608,7 @@ const Dashboard: React.FC = () => {
                         role &&
                         (role === "admin" ||
                           role === "Inventory " ||
+                          role === "Accountant" ||
                           role.toLowerCase()?.includes("product"))
                           ? directInventory?.total_excess_stock
                           : 0
@@ -619,6 +624,7 @@ const Dashboard: React.FC = () => {
                         role &&
                         (role === "admin" ||
                           role === "Inventory " ||
+                          role === "Accountant" ||
                           role.toLowerCase()?.includes("product"))
                           ? directInventory?.total_low_stock
                           : 0
@@ -638,6 +644,7 @@ const Dashboard: React.FC = () => {
                         role &&
                         (role === "admin" ||
                           role === "Inventory " ||
+                          role === "Accountant" ||
                           role.toLowerCase()?.includes("product"))
                           ? indirectInventory?.total_product_count
                           : 0
@@ -654,6 +661,7 @@ const Dashboard: React.FC = () => {
                         role &&
                         (role === "admin" ||
                           role === "Inventory " ||
+                          role === "Accountant" ||
                           role.toLowerCase()?.includes("product"))
                           ? `₹ {indirectInventory?.total_stock_price}/-`
                           : 0
@@ -669,6 +677,7 @@ const Dashboard: React.FC = () => {
                         role &&
                         (role === "admin" ||
                           role === "Inventory " ||
+                          role === "Accountant" ||
                           role.toLowerCase()?.includes("product"))
                           ? indirectInventory?.total_excess_stock
                           : 0
@@ -684,6 +693,7 @@ const Dashboard: React.FC = () => {
                         role &&
                         (role === "admin" ||
                           role === "Inventory " ||
+                          role === "Accountant" ||
                           role.toLowerCase()?.includes("product"))
                           ? indirectInventory?.total_low_stock
                           : 0
@@ -702,6 +712,7 @@ const Dashboard: React.FC = () => {
                       role &&
                       (role === "admin" ||
                         role === "Inventory " ||
+                        role === "Accountant" ||
                         role.toLowerCase()?.includes("product"))
                         ? scrap?.total_product_count?.toString() || ""
                         : 0
@@ -718,6 +729,7 @@ const Dashboard: React.FC = () => {
                       role &&
                       (role === "admin" ||
                         role === "Inventory " ||
+                        role === "Accountant" ||
                         role.toLowerCase()?.includes("product"))
                         ? `${scrap?.total_stock_price}/-`
                         : 0
@@ -734,6 +746,7 @@ const Dashboard: React.FC = () => {
                       role &&
                       (role === "admin" ||
                         role === "Inventory " ||
+                        role === "Accountant" ||
                         role.toLowerCase()?.includes("product"))
                         ? inventory?.total_product_count?.toString() || ""
                         : 0
@@ -750,6 +763,7 @@ const Dashboard: React.FC = () => {
                       role &&
                       (role === "admin" ||
                         role === "Inventory " ||
+                        role === "Accountant" ||
                         role.toLowerCase()?.includes("product"))
                         ? `₹ ${inventory?.total_stock_price}/-`
                         : 0

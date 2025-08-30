@@ -3,8 +3,15 @@ import Select from "react-select";
 import { MdOutlineRefresh } from "react-icons/md";
 import { AiFillFileExcel } from "react-icons/ai";
 import { RxCross2 } from "react-icons/rx";
-import SampleCSV from '../assets/csv/product-sample.csv';
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { FaSearch, FaTimes } from "react-icons/fa";
+import SampleCSV from "../assets/csv/product-sample.csv";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import {
   useDeleteProductMutation,
   useLazyFetchProductsQuery,
@@ -34,6 +41,9 @@ const Products: React.FC = () => {
   const [data, setData] = useState([]);
   const [productId, setProductId] = useState<string | undefined>(); // Product Id to be updated or deleted
   const [searchKey, setSearchKey] = useState<string | undefined>();
+  const [debouncedSearchKey, setDebouncedSearchKey] = useState<
+    string | undefined
+  >();
   const [filteredData, setFilteredData] = useState<any>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [PageSize, setPageSize] = useState<number>(10);
@@ -182,58 +192,84 @@ const Products: React.FC = () => {
     fetchAllStores();
   }, []);
 
+  // Debounce search input
   useEffect(() => {
-    const searchTxt = searchKey?.toLowerCase();
-    // // @ts-ignore
-    const results = data.filter(
-      (prod: any) =>
-        (prod.product_or_service?.toLowerCase().includes(productServiceFilter) &&
-        (storeFilter &&
-        (storeFilter?.value === "" ||
-          prod?.store?._id === storeFilter?.value))) &&
-        (prod.name?.toLowerCase()?.includes(searchTxt) ||
-          prod.product_id?.toLowerCase()?.includes(searchTxt) ||
-          prod.category?.toLowerCase()?.includes(searchTxt) ||
-          prod.price
-            ?.toString()
-            ?.toLowerCase()
-            ?.toString()
-            .includes(searchTxt) ||
-          prod.uom?.toLowerCase()?.includes(searchTxt) ||
-          prod.current_stock?.toString().toString().includes(searchTxt) ||
-          prod?.min_stock?.toString()?.includes(searchTxt) ||
-          prod?.max_stock?.toString()?.includes(searchTxt) ||
-          prod?.hsn?.includes(searchTxt) ||
-          (prod?.createdAt &&
-            new Date(prod?.createdAt)
-              ?.toISOString()
-              ?.substring(0, 10)
-              ?.split("-")
-              .reverse()
-              .join("")
-              ?.includes(searchTxt?.replaceAll("/", "") || "")) ||
-          (prod?.updatedAt &&
-            new Date(prod?.updatedAt)
-              ?.toISOString()
-              ?.substring(0, 10)
-              ?.split("-")
-              ?.reverse()
-              ?.join("")
-              ?.includes(searchTxt?.replaceAll("/", "") || "")))
+    const timer = setTimeout(() => {
+      setDebouncedSearchKey(searchKey);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchKey]);
+
+  // Clear search function
+  const clearSearch = () => {
+    setSearchKey("");
+    setDebouncedSearchKey("");
+  };
+
+  useEffect(() => {
+    const searchTxt = debouncedSearchKey?.toLowerCase();
+
+    const results = data.filter((prod: any) => {
+      // Apply product/service filter
+      const matchesProductService =
+        !productServiceFilter ||
+        prod.product_or_service?.toLowerCase().includes(productServiceFilter);
+
+      // Apply store filter
+      const matchesStore =
+        !storeFilter ||
+        storeFilter.value === "" ||
+        prod?.store?._id === storeFilter?.value;
+
+      // Apply search filter - search across all relevant fields
+      const matchesSearch =
+        !searchTxt ||
+        prod.name?.toLowerCase()?.includes(searchTxt) ||
+        prod.product_id?.toLowerCase()?.includes(searchTxt) ||
+        prod.category?.toLowerCase()?.includes(searchTxt) ||
+        prod.price?.toString()?.includes(searchTxt) ||
+        prod.uom?.toLowerCase()?.includes(searchTxt) ||
+        prod.current_stock?.toString()?.includes(searchTxt) ||
+        prod.min_stock?.toString()?.includes(searchTxt) ||
+        prod.max_stock?.toString()?.includes(searchTxt) ||
+        prod.hsn?.toLowerCase()?.includes(searchTxt) ||
+        (prod.createdAt &&
+          new Date(prod.createdAt)
+            ?.toISOString()
+            ?.substring(0, 10)
+            ?.split("-")
+            .reverse()
+            .join("")
+            ?.includes(searchTxt?.replaceAll("/", "") || "")) ||
+        (prod.updatedAt &&
+          new Date(prod.updatedAt)
+            ?.toISOString()
+            ?.substring(0, 10)
+            ?.split("-")
+            .reverse()
+            .join("")
+            ?.includes(searchTxt?.replaceAll("/", "") || ""));
+
+      return matchesProductService && matchesStore && matchesSearch;
+    });
+
+    setFilteredData(results);
+  }, [debouncedSearchKey, productServiceFilter, storeFilter, data]);
+
+  if (!isAllowed) {
+    return (
+      <div className="text-center text-red-500">
+        You are not allowed to access this route.
+      </div>
     );
-    setFilteredData(searchTxt ? results : data);
-  }, [searchKey, productServiceFilter, storeFilter]);
-
-  if(!isAllowed){
-    return <div className="text-center text-red-500">You are not allowed to access this route.</div>
   }
-
 
   const handleExport = async () => {
     try {
       if (isSubmitting) return;
       setIsSubmitting(true);
-  
+
       const response = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}product/exportdirectcsv`,
         {
@@ -243,22 +279,22 @@ const Products: React.FC = () => {
           },
         }
       );
-  
+
       if (!response.ok) {
         // Throw a custom error to be caught in catch block
         throw new Error(`Failed to export: ${response.statusText}`);
       }
-  
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-  
+
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", "export.csv");
       document.body.appendChild(link);
       link.click();
       link.remove();
-  
+
       // Optionally release the memory
       window.URL.revokeObjectURL(url);
     } catch (error: any) {
@@ -270,24 +306,27 @@ const Products: React.FC = () => {
 
   const deletebulkProductHandler = async (ids: string[]) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}product/bulkdelete`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${cookies?.access_token}`,
-        },
-        body: JSON.stringify({ ids }),
-      });
-  
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}product/bulkdelete`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${cookies?.access_token}`,
+          },
+          body: JSON.stringify({ ids }),
+        }
+      );
+
       if (!response.ok) {
         throw new Error("Failed to delete products");
       }
-  
+
       const result = await response.json();
       toast.success(result.message);
-      fetchProductsHandler()
+      fetchProductsHandler();
       // Optional: refetch or update table state here
-    } catch (error:any) {
+    } catch (error: any) {
       toast.error(error || "Something went wrong");
       console.error("Bulk delete failed", error);
     }
@@ -320,76 +359,109 @@ const Products: React.FC = () => {
       <h1 className="text-lg md:text-xl font-semibold mb-4">Inventory</h1>
 
       {/* Search + Filters + Actions */}
-      <div className="flex flex-col md:flex-row   items-center gap-4 mb-4">
-        {/* Search textarea */}
-        <textarea
-          rows={1}
-          placeholder="Search"
-          value={searchKey}
-          onChange={(e) => setSearchKey(e.target.value)}
-          className="w-full rounded-lg border border-teal-700 px-3 py-2 text-sm resize-none focus:outline-teal-500 hover:outline-teal-500 transition"
-        />
+      <div className="flex flex-col gap-4 mb-4">
+        {/* Main Search Bar */}
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          {/* Simple Search Input */}
+          <div className="w-full relative">
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
+              <textarea
+                rows={1}
+                placeholder="Search products..."
+                value={searchKey || ""}
+                onChange={(e) => setSearchKey(e.target.value)}
+                className="w-full pl-10 pr-10 rounded-lg border border-teal-700 px-3 py-2 text-sm resize-none focus:outline-teal-500 hover:outline-teal-500 transition"
+              />
+              {searchKey && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes size={14} />
+                </button>
+              )}
+            </div>
+            {searchKey && (
+              <div className="absolute z-10 mt-1 text-xs text-gray-500">
+                Found {filteredData.length} result
+                {filteredData.length !== 1 ? "s" : ""}
+              </div>
+            )}
+          </div>
 
-        {/* Product/Service filter */}
-        <FormControl className="w-full md:w-[200px]">
-          <select
-            value={productServiceFilter}
-            onChange={(e) => setProductServiceFilter(e.target.value)}
-            className="w-full rounded border border-gray-400 py-2 px-3"
-          >
-            <option value="">All Products/Services</option>
-            <option value="product">Products</option>
-            <option value="service">Services</option>
-          </select>
-        </FormControl>
+          {/* Action Buttons */}
+          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <Button
+              onClick={openAddProductDrawerHandler}
+              color="#fff"
+              backgroundColor={MainColor}
+              _hover={{ backgroundColor: "#14b8a6" }}
+              className="py-3 rounded-lg text-white w-full md:w-auto"
+              fontSize="sm"
+            >
+              Add New Product
+            </Button>
 
-        {/* Store filter */}
-        <FormControl className="w-full md:w-[200px]">
-          <Select
-            options={storeOptions}
-            value={storeFilter}
-            onChange={(d: any) => setStoreFilter(d)}
-            classNamePrefix="react-select"
-            styles={{ container: (base) => ({ ...base, width: '100%' }) }}
-          />
-        </FormControl>
+            <Button
+              onClick={fetchProductsHandler}
+              leftIcon={<MdOutlineRefresh />}
+              color="#319795"
+              borderColor="#319795"
+              variant="outline"
+              className="w-full md:w-auto"
+              fontSize="sm"
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
 
-        {/* Add Product Button */}
-        <Button
-          onClick={openAddProductDrawerHandler}
-          color="#fff"
-          backgroundColor={MainColor}
-          _hover={{ backgroundColor: "#14b8a6" }}
-          className="py-3 rounded-lg text-white w-full "
-          fontSize="sm"
-        >
-          Add New Product
-        </Button>
+        {/* Filters Row */}
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          {/* Product/Service filter */}
+          <FormControl className="w-full md:w-[200px]">
+            <select
+              value={productServiceFilter}
+              onChange={(e) => setProductServiceFilter(e.target.value)}
+              className="w-full rounded border border-gray-400 py-2 px-3"
+            >
+              <option value="">All Products/Services</option>
+              <option value="product">Products</option>
+              <option value="service">Services</option>
+            </select>
+          </FormControl>
 
-        {/* Refresh Button */}
-        <Button
-          onClick={fetchProductsHandler}
-          leftIcon={<MdOutlineRefresh />}
-          color="#319795"
-          borderColor="#319795"
-          variant="outline"
-          className="w-full "
-          fontSize="sm"
-        >
-          Refresh
-        </Button>
+          {/* Store filter */}
+          <FormControl className="w-full md:w-[200px]">
+            <Select
+              options={storeOptions}
+              value={storeFilter}
+              onChange={(d: any) => setStoreFilter(d)}
+              classNamePrefix="react-select"
+              styles={{ container: (base) => ({ ...base, width: "100%" }) }}
+              placeholder="Select Store"
+            />
+          </FormControl>
 
-        {/* Page size selector */}
-        <select
-          className="border w-full border-gray-400 rounded  px-2 py-1.5 md:w-[60px]  "
-          onChange={(e) => setPageSize(Number(e.target.value))}
-        >
-          <option value="10">10</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="100000">All</option>
-        </select>
+          {/* Page size selector */}
+          <div className="w-full md:w-auto">
+            <label className="block text-sm font-medium text-gray-700 mb-1 md:hidden">
+              Items per page:
+            </label>
+            <select
+              className="border w-full border-gray-400 rounded px-2 py-1.5 md:w-[80px]"
+              value={PageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+            >
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="100000">All</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Export + Bulk Upload */}
@@ -491,7 +563,6 @@ const Products: React.FC = () => {
         deletebulkProductHandler={deletebulkProductHandler}
       />
     </div>
-  
   );
 };
 
