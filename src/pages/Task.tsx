@@ -835,6 +835,19 @@ const Task = () => {
                   <Text fontSize="sm">
                     <strong>Quantity:</strong> {task.productQuantity}
                   </Text>
+                  <Text fontSize="sm">
+                    <strong>Created Date:</strong>{" "}
+                    {task?.allsale?.createdAt
+                      ? new Date(task?.allsale?.createdAt).toLocaleString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })
+                      : "N/A"}
+                  </Text>
                   {["acc", "account", "accountant", "dispatch", "dis"].includes(
                     role.toLowerCase()
                   ) ? (
@@ -858,11 +871,16 @@ const Task = () => {
                   <Text fontSize="sm">
                     <strong>Assigned Process:</strong> {task?.assined_process}
                   </Text>
+                
+
+
+                  
                   {task?.assinedby_comment ? (
                     <Text fontSize="sm">
                       <strong>Remarks:</strong> {task?.assinedby_comment}
                     </Text>
                   ) : null}
+                 
 
                   {task?.sample_bom_name ? (
                     <Text fontSize="sm" color="blue">
@@ -1048,9 +1066,9 @@ const Task = () => {
                     </Button>
                   ) : null}
 
-                  <Text fontSize="sm">
+                  {/* <Text fontSize="sm">
                     <strong>Date:</strong> {task.date}
-                  </Text>
+                  </Text> */}
                 </HStack>
               ) : (
                 <HStack
@@ -1118,7 +1136,7 @@ const Task = () => {
                     ) : null}
                   </VStack>
 
-                  {task?.sale_design_approve == "Approve" ? (
+                  {task?.sale_design_approve === "Approve" ? (
                     <Badge colorScheme="green" fontSize="sm">
                       Sales Design Approval: {task.sale_design_approve}
                     </Badge>
@@ -1133,9 +1151,9 @@ const Task = () => {
                     </VStack>
                   ) : null}
 
-                  <Text fontSize="sm">
+                  {/* <Text fontSize="sm">
                     <strong>Date:</strong> {task.date}
-                  </Text>
+                  </Text> */}
                 </HStack>
               )}
             </Box>
