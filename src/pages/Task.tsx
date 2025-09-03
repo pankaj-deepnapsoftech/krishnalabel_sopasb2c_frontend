@@ -58,6 +58,14 @@ const Task = () => {
   const dropZoneBg = useColorModeValue("gray.100", "gray.700");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
   const role = cookies?.role;
   const navigate = useNavigate();
   const [saleId, setSaleId] = useState("");
@@ -90,8 +98,8 @@ const Task = () => {
   const [scrollToTaskId, setScrollToTaskId] = useState<string | null>(null);
   const scrollRef = React.useRef(0);
   const taskRefs = useRef({});
-  console.log(scrollRef)
-  console.log(taskRefs.current)
+  console.log(scrollRef);
+  console.log(taskRefs.current);
   const {
     isOpen: isAccountpreviewOpen,
     onOpen: onAccountpreviewOpen,
@@ -108,66 +116,113 @@ const Task = () => {
     try {
       setIsLoading(true);
 
+      // Build query parameters for server-side filtering
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      // Add filters to query params
+      if (debouncedSearchKey) {
+        queryParams.append("search", debouncedSearchKey);
+      }
+      if (filters.status) {
+        queryParams.append("status", filters.status);
+      }
+      if (filters.date) {
+        queryParams.append("date", filters.date);
+      }
+
       const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}assined/get-assined?page=${page}&limit=${limit}`,
+        `${
+          process.env.REACT_APP_BACKEND_URL
+        }assined/get-assined?${queryParams.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${cookies?.access_token}`,
           },
         }
       );
-      const tasks = response.data.data.map((task) => {
-        const sale = task?.sale_id?.length ? task.sale_id[0] : null;
-        const product = sale?.product_id?.length ? sale.product_id[0] : null;
-        const assign = task?.assined_by?.length ? task.assined_by[0] : null;
-        const customer = task?.sale_id[0]?.customer_id
-          ? task?.sale_id[0]?.customer_id[0]
-          : null;
-        const user = task?.sale_id[0]?.user_id
-          ? task?.sale_id[0]?.user_id[0]
-          : null;
 
-        return {
-          id: task?._id,
-          date: new Date(task.createdAt).toLocaleDateString(),
-          productName: product?.name || "No product name",
-          productQuantity: sale?.product_qty || 0,
-          productPrice: `${sale?.price || 0} /-`,
-          assignedBy: assign?.first_name || "Unknown",
-          role: assign?.role || "No role",
-          design_status: task?.isCompleted || "N/A",
-          design_approval: sale?.customer_approve || "Pending",
-          customer_design_comment:
-            sale?.customer_design_comment || "No comment",
-          sale_id: sale?._id || "No sale ID",
-          designFile: sale?.designFile || null,
-          assinedby_comment: task?.assinedby_comment || "No comment",
-          assined_process: task?.assined_process || "No process",
-          bom: sale?.bom || [],
-          customer_name: customer?.full_name,
-          company_name: customer?.company_name,
-          sale_by: user?.first_name,
-          invoice: sale?.invoice,
-          payment_verify: sale?.payment_verify,
-          paymet_status: sale?.paymet_status,
-          customer_pyement_ss: sale?.customer_pyement_ss,
-          token_amt: sale?.token_amt,
-          token_status: sale?.token_status,
-          token_ss: sale?.token_ss,
-          isTokenVerify: sale?.isTokenVerify,
-          sample_bom_name: sale?.bom[0]?.bom_name,
-          bom_name: sale?.bom[1]?.bom_name,
-          sale_design_approve: sale?.sale_design_approve,
-          sale_design_comment: sale?.sale_design_comment,
-          sample_image: sale?.sample_image,
-          allsale: sale,
-          isSampleApprove: sale?.isSampleApprove,
-        };
-      });
+      if (response.data && response.data.data) {
+        const tasks = response.data.data.map((task) => {
+          const sale = task?.sale_id?.length ? task.sale_id[0] : null;
+          const product = sale?.product_id?.length ? sale.product_id[0] : null;
+          const assign = task?.assined_by?.length ? task.assined_by[0] : null;
+          const customer = task?.sale_id[0]?.customer_id
+            ? task?.sale_id[0]?.customer_id[0]
+            : null;
+          const user = task?.sale_id[0]?.user_id
+            ? task?.sale_id[0]?.user_id[0]
+            : null;
 
-      setTasks(tasks);
+          return {
+            id: task?._id,
+            date: new Date(task.createdAt).toLocaleDateString(),
+            productName: product?.name || "No product name",
+            productQuantity: sale?.product_qty || 0,
+            productPrice: `${sale?.price || 0} /-`,
+            assignedBy: assign?.first_name || "Unknown",
+            role: assign?.role || "No role",
+            design_status: task?.isCompleted || "N/A",
+            design_approval: sale?.customer_approve || "Pending",
+            customer_design_comment:
+              sale?.customer_design_comment || "No comment",
+            sale_id: sale?._id || "No sale ID",
+            designFile: sale?.designFile || null,
+            assinedby_comment: task?.assinedby_comment || "No comment",
+            assined_process: task?.assined_process || "No process",
+            bom: sale?.bom || [],
+            customer_name: customer?.full_name,
+            company_name: customer?.company_name,
+            sale_by: user?.first_name,
+            invoice: sale?.invoice,
+            payment_verify: sale?.payment_verify,
+            paymet_status: sale?.paymet_status,
+            customer_pyement_ss: sale?.customer_pyement_ss,
+            token_amt: sale?.token_amt,
+            token_status: sale?.token_status,
+            token_ss: sale?.token_ss,
+            isTokenVerify: sale?.isTokenVerify,
+            sample_bom_name: sale?.bom[0]?.bom_name,
+            bom_name: sale?.bom[1]?.bom_name,
+            sale_design_approve: sale?.sale_design_approve,
+            sale_design_comment: sale?.sale_design_comment,
+            sample_image: sale?.sample_image,
+            allsale: sale,
+            isSampleApprove: sale?.isSampleApprove,
+          };
+        });
+
+        setTasks(tasks);
+
+        // Update pagination information
+        if (response.data.pagination) {
+          setPagination(response.data.pagination);
+        }
+      } else {
+        setTasks([]);
+        setPagination({
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          itemsPerPage: limit,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        });
+      }
     } catch (error) {
-      toast.error(error);
+      console.error("Error fetching tasks:", error);
+      toast.error("Failed to fetch tasks");
+      setTasks([]);
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 0,
+        itemsPerPage: limit,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -194,29 +249,38 @@ const Task = () => {
     };
   });
 
+  // Trigger fetchTasks when filters change
   useEffect(() => {
-    fetchTasks();
-  }, [cookies?.access_token, page, limit]);
+    if (cookies?.access_token) {
+      setPage(1); // Reset to first page when filters change
+      fetchTasks();
+    }
+  }, [debouncedSearchKey, filters.status, filters.date, limit]);
 
-  
-
-
-
-
-
+  useEffect(() => {
+    if (cookies?.access_token) {
+      fetchTasks();
+    }
+  }, [page]); // Only refetch when page changes
 
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchKey(filters.search);
-    }, 300); // 300ms delay
+    }, 500); // Increased to 500ms for better UX
 
     return () => clearTimeout(timer);
   }, [filters.search]);
 
-  // Clear search function
-  const clearSearch = () => {
-    setFilters({ ...filters, search: "" });
+  // Clear all filters function
+  const clearAllFilters = () => {
+    setFilters({
+      status: "",
+      date: "",
+      manager: "",
+      productName: "",
+      search: "",
+    });
     setDebouncedSearchKey("");
   };
 
@@ -236,50 +300,10 @@ const Task = () => {
     }
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    // Apply status filter
-    const matchesStatus =
-      !filters.status || task.design_status?.toLowerCase() === filters.status;
+  // Remove client-side filtering since we're now doing server-side filtering
+  // const filteredTasks = tasks; // Use tasks directly from server response
 
-    // Apply date filter
-    const matchesDate = !filters.date || task.date === filters.date;
-
-    // Apply simple search across all fields
-    const matchesSearch =
-      !debouncedSearchKey ||
-      task.productName
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.assignedBy
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.customer_name
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.company_name
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.assined_process
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.design_status
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.assinedby_comment
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.customer_design_comment
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.sale_by?.toLowerCase()?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.productPrice
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase());
-
-    return matchesStatus && matchesDate && matchesSearch;
-  });
-
-  console.log(filteredTasks)
+  console.log(tasks);
 
   const handleOpenModal = (task) => {
     setSelectedTask(task);
@@ -364,7 +388,7 @@ const Task = () => {
       }
       setScrollToTaskId(id);
 
-     await  fetchTasks();
+      await fetchTasks();
     } catch (error) {
       console.log(error);
       toast.error(error);
@@ -384,7 +408,6 @@ const Task = () => {
       setScrollToTaskId(null); // reset
     }
   }, [tasks, isLoading, scrollToTaskId]);
-
 
   const handleDone = async (id) => {
     // Save current scroll position
@@ -534,17 +557,32 @@ const Task = () => {
               />
               {filters.search && (
                 <button
-                  onClick={clearSearch}
+                  onClick={() => {
+                    setFilters({ ...filters, search: "" });
+                    setDebouncedSearchKey("");
+                  }}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <FaTimes size={14} />
                 </button>
               )}
+              {/* Show searching indicator */}
+              {filters.search && filters.search !== debouncedSearchKey && (
+                <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                  <Spinner size="xs" color="gray.400" />
+                </div>
+              )}
             </div>
             {filters.search && (
               <div className="absolute z-10 mt-1 text-xs text-gray-500">
-                Found {filteredTasks.length} result
-                {filteredTasks.length !== 1 ? "s" : ""}
+                Found {pagination.totalItems} result
+                {pagination.totalItems !== 1 ? "s" : ""}
+                {pagination.totalItems > 0 && (
+                  <span>
+                    {" "}
+                    (Page {pagination.currentPage} of {pagination.totalPages})
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -563,6 +601,21 @@ const Task = () => {
             >
               Refresh
             </Button>
+
+            {/* Clear Filters Button */}
+            {(filters.search || filters.status || filters.date) && (
+              <Button
+                fontSize={{ base: "14px", md: "14px" }}
+                paddingX={{ base: "10px", md: "12px" }}
+                onClick={clearAllFilters}
+                color="#dc2626"
+                borderColor="#dc2626"
+                variant="outline"
+                className="w-full md:w-auto"
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
         </div>
 
@@ -596,6 +649,7 @@ const Task = () => {
               onChange={(e) => {
                 const newSize = Number(e.target.value);
                 setLimit(newSize);
+                setPage(1); // Reset to first page when limit changes
               }}
               size="sm"
               className="w-[80px]"
@@ -608,6 +662,34 @@ const Task = () => {
             </Select>
           </div>
         </div>
+
+        {/* Active Filters Summary */}
+        {/* {(filters.search || filters.status || filters.date) && (
+          <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+            <span>Active filters:</span>
+            {filters.search && (
+              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                Search: "{filters.search}"
+              </span>
+            )}
+            {filters.status && (
+              <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
+                Status: {filters.status}
+              </span>
+            )}
+            {filters.date && (
+              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                Date: {filters.date}
+              </span>
+            )}
+            <button
+              onClick={clearAllFilters}
+              className="text-red-600 hover:text-red-800 underline ml-2"
+            >
+              Clear all
+            </button>
+          </div>
+        )} */}
       </div>
 
       {/* <HStack className="flex justify-between items-center mb-5 mt-5">
@@ -685,12 +767,42 @@ const Task = () => {
         >
           <Spinner size="xl" />
         </Box>
+      ) : tasks.length === 0 ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          justifyContent="center"
+          alignItems="center"
+          height="300px"
+          textAlign="center"
+        >
+          <Text fontSize="lg" color="gray.500" mb={2}>
+            No tasks found
+          </Text>
+          <Text fontSize="sm" color="gray.400">
+            {filters.search || filters.status || filters.date
+              ? "Try adjusting your filters or search terms"
+              : "No tasks have been assigned to you yet"}
+          </Text>
+          {(filters.search || filters.status || filters.date) && (
+            <Button
+              mt={4}
+              size="sm"
+              onClick={clearAllFilters}
+              color="#319795"
+              borderColor="#319795"
+              variant="outline"
+            >
+              Clear All Filters
+            </Button>
+          )}
+        </Box>
       ) : (
         <VStack spacing={5}>
-          {filteredTasks.map((task) => (
+          {tasks.map((task) => (
             <Box
               key={task._id}
-              ref={(el) => (taskRefs.current[task.id] = el)} 
+              ref={(el) => (taskRefs.current[task.id] = el)}
               borderWidth="1px"
               borderRadius="lg"
               boxShadow="lg"
@@ -893,7 +1005,8 @@ const Task = () => {
                       View Token Proof{" "}
                     </Text>
                   ) : null}
-                  {role !== "Production" && task?.allsale?.half_payment_image ? (
+                  {role !== "Production" &&
+                  task?.allsale?.half_payment_image ? (
                     <Text
                       className="text-blue-500 underline text-sm cursor-pointer"
                       onClick={() => {
@@ -920,7 +1033,7 @@ const Task = () => {
                       onClick={() => handleAccept(task?.id)}
                       disabled={isSubmitting}
                     >
-                      Accept Task                         
+                      Accept Task
                     </Button>
                   ) : null}
 
@@ -935,13 +1048,13 @@ const Task = () => {
                         size="sm"
                         onClick={() => handleBOM(task?.sale_id)}
                       >
-                        Create BOM 
+                        Create BOM
                       </Button>
                     )
                   )}
 
-
-                  {task?.bom.length === 1 && task?.design_status !== "Completed" ? (
+                  {task?.bom.length === 1 &&
+                  task?.design_status !== "Completed" ? (
                     <Button
                       colorScheme="orange"
                       leftIcon={<FaCheck />}
@@ -951,7 +1064,6 @@ const Task = () => {
                       Task Done
                     </Button>
                   ) : null}
-
 
                   {role === "Production" && task?.sample_image ? (
                     <Button
@@ -1441,11 +1553,14 @@ const Task = () => {
         </ModalContent>
       </Modal>
 
-      <Pagination
-        page={page}
-        setPage={setPage}
-        length={filteredTasks?.length}
-      />
+      {tasks.length > 0 && (
+        <Pagination
+          page={page}
+          setPage={setPage}
+          length={tasks?.length}
+          pagination={pagination}
+        />
+      )}
     </div>
   );
 };
