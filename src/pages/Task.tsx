@@ -4,6 +4,7 @@ import React, {
   useLayoutEffect,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import {
   Box,
@@ -86,6 +87,11 @@ const Task = () => {
   const [halfAmount, sethalfAmount] = useState(null);
   const [savedScrollPosition, setSavedScrollPosition] = useState(0);
   const [shouldRestoreScroll, setShouldRestoreScroll] = useState(false);
+  const [scrollToTaskId, setScrollToTaskId] = useState<string | null>(null);
+  const scrollRef = React.useRef(0);
+  const taskRefs = useRef({});
+  console.log(scrollRef)
+  console.log(taskRefs.current)
   const {
     isOpen: isAccountpreviewOpen,
     onOpen: onAccountpreviewOpen,
@@ -192,18 +198,12 @@ const Task = () => {
     fetchTasks();
   }, [cookies?.access_token, page, limit]);
 
-  // Restore scroll position after tasks update
-  useLayoutEffect(() => {
-    if (shouldRestoreScroll && savedScrollPosition > 0 && !isLoading) {
-      window.scrollTo({
-        top: savedScrollPosition,
-        behavior: "auto", // use "auto" for instant
-      });
+  
 
-      // reset only the flag, not the position
-      setShouldRestoreScroll(false);
-    }
-  }, [tasks, isLoading, shouldRestoreScroll, savedScrollPosition]);
+
+
+
+
 
   // Debounce search input
   useEffect(() => {
@@ -279,6 +279,8 @@ const Task = () => {
     return matchesStatus && matchesDate && matchesSearch;
   });
 
+  console.log(filteredTasks)
+
   const handleOpenModal = (task) => {
     setSelectedTask(task);
     setFile(null);
@@ -345,10 +347,6 @@ const Task = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // Save scroll position
-    setSavedScrollPosition(window.scrollY);
-    setShouldRestoreScroll(true);
-
     try {
       const response = await axios.patch(
         `${process.env.REACT_APP_BACKEND_URL}assined/update-status/${id}`,
@@ -359,15 +357,34 @@ const Task = () => {
       toast.success(response.data.message);
       socket.emit("notificationdatachange", true);
 
-      await fetchTasks();
+      // Task ka element save karo
+      const el = taskRefs.current[id];
+      if (el) {
+        scrollRef.current = el.offsetTop - 100; // thoda upar jagah
+      }
+      setScrollToTaskId(id);
+
+     await  fetchTasks();
     } catch (error) {
       console.log(error);
       toast.error(error);
-      setShouldRestoreScroll(false);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  useLayoutEffect(() => {
+    if (!isLoading && tasks.length > 0 && scrollToTaskId) {
+      const el = taskRefs.current[scrollToTaskId];
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 50);
+      }
+      setScrollToTaskId(null); // reset
+    }
+  }, [tasks, isLoading, scrollToTaskId]);
+
 
   const handleDone = async (id) => {
     // Save current scroll position
@@ -673,6 +690,7 @@ const Task = () => {
           {filteredTasks.map((task) => (
             <Box
               key={task._id}
+              ref={(el) => (taskRefs.current[task.id] = el)} 
               borderWidth="1px"
               borderRadius="lg"
               boxShadow="lg"
@@ -806,9 +824,9 @@ const Task = () => {
                 gap={4}
               >
                 <VStack align="start" w={{ base: "100%", md: "48%" }}>
-                  {role == "Accountant" ||
-                  role == "Sales" ||
-                  role == "admin" ? (
+                  {role === "Accountant" ||
+                  role === "Sales" ||
+                  role === "admin" ? (
                     <Text fontSize="sm">
                       <strong>Product Price:</strong> {task.productPrice}
                     </Text>
@@ -858,7 +876,7 @@ const Task = () => {
                       {task?.bom_name}
                     </Text>
                   ) : null}
-                  {role != "Production" && task?.token_ss ? (
+                  {role !== "Production" && task?.token_ss ? (
                     <Text
                       className="text-blue-500 underline text-sm cursor-pointer"
                       onClick={() =>
@@ -875,7 +893,7 @@ const Task = () => {
                       View Token Proof{" "}
                     </Text>
                   ) : null}
-                  {role != "Production" && task?.allsale?.half_payment_image ? (
+                  {role !== "Production" && task?.allsale?.half_payment_image ? (
                     <Text
                       className="text-blue-500 underline text-sm cursor-pointer"
                       onClick={() => {
@@ -902,25 +920,28 @@ const Task = () => {
                       onClick={() => handleAccept(task?.id)}
                       disabled={isSubmitting}
                     >
-                      Accept Task
+                      Accept Task                         
                     </Button>
                   ) : null}
 
-                  {task?.bom.length === 2 ? (
+                  {task?.bom.length === 1 ? (
                     <Badge colorScheme="green" fontSize="sm">
                       <strong>BOM:</strong> Created
                     </Badge>
                   ) : (
-                    <Button
-                      colorScheme="teal"
-                      size="sm"
-                      onClick={() => handleBOM(task?.sale_id)}
-                    >
-                      Create BOM
-                    </Button>
+                    task?.design_status === "UnderProcessing" && (
+                      <Button
+                        colorScheme="teal"
+                        size="sm"
+                        onClick={() => handleBOM(task?.sale_id)}
+                      >
+                        Create BOM 
+                      </Button>
+                    )
                   )}
 
-                  {task?.design_status != "Completed" ? (
+
+                  {task?.bom.length === 1 && task?.design_status !== "Completed" ? (
                     <Button
                       colorScheme="orange"
                       leftIcon={<FaCheck />}
@@ -931,7 +952,8 @@ const Task = () => {
                     </Button>
                   ) : null}
 
-                  {role == "Production" && task?.sample_image ? (
+
+                  {role === "Production" && task?.sample_image ? (
                     <Button
                       colorScheme="teal"
                       size="sm"

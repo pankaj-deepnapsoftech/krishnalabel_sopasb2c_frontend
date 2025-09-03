@@ -154,7 +154,7 @@ const BOMTable: React.FC<BOMCardProps> = ({
                     onClick={() => approveBomHandler(bom)}
                   />
                 )}
-                { (bom?.approved == "Reject" && viewBomMessHandler) && (
+                { (bom?.approved === "Reject" && viewBomMessHandler) && (
                   <>
                     <IconButton
                       icon={<BiSolidMessageRoundedDots />}

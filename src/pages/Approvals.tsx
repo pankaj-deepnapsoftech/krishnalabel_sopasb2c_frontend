@@ -295,6 +295,7 @@ const Approvals: React.FC = () => {
   };
 
   const approveBomHandler = async (data: any) => {
+    console.log(data)
     const approve = data?.approved;
     openBomModal(data, approve)
   };
