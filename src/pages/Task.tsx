@@ -80,6 +80,8 @@ const Task = () => {
     manager: "",
     productName: "",
     search: "",
+    sortBy: "",
+    sortOrder: "desc",
   });
   const [debouncedSearchKey, setDebouncedSearchKey] = useState("");
   const [halfAmountId, sethalfAmountId] = useState("");
@@ -123,7 +125,8 @@ const Task = () => {
 
         return {
           id: task?._id,
-          date: new Date(task.createdAt).toLocaleDateString(),
+          date: task.createdAt,
+          displayDate: new Date(task.createdAt).toLocaleDateString(),
           productName: product?.name || "No product name",
           productQuantity: sale?.product_qty || 0,
           productPrice: `${sale?.price || 0} /-`,
@@ -149,8 +152,8 @@ const Task = () => {
           token_status: sale?.token_status,
           token_ss: sale?.token_ss,
           isTokenVerify: sale?.isTokenVerify,
-          sample_bom_name: sale?.bom[0]?.bom_name,
-          bom_name: sale?.bom[1]?.bom_name,
+          sample_bom_name: sale?.bom?.[0]?.bom_name,
+          bom_name: sale?.bom?.[1]?.bom_name,
           sale_design_approve: sale?.sale_design_approve,
           sale_design_comment: sale?.sale_design_comment,
           sample_image: sale?.sample_image,
@@ -192,6 +195,12 @@ const Task = () => {
     fetchTasks();
   }, [cookies?.access_token, page, limit]);
 
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
+  }, [filters.status, filters.date, debouncedSearchKey]);
+
   // Restore scroll position after tasks update
   useLayoutEffect(() => {
     if (shouldRestoreScroll && savedScrollPosition > 0 && !isLoading) {
@@ -220,8 +229,50 @@ const Task = () => {
     setDebouncedSearchKey("");
   };
 
+  const clearAllFilters = () => {
+    setFilters({
+      status: "",
+      date: "",
+      manager: "",
+      productName: "",
+      search: "",
+      sortBy: "",
+      sortOrder: "desc",
+    });
+    setDebouncedSearchKey("");
+  };
+
   const handleFilterChange = (field, value) => {
     setFilters({ ...filters, [field]: value });
+  };
+
+  const sortTasks = (tasks) => {
+    if (!filters.sortBy) return tasks;
+
+    const sorted = [...tasks].sort((a, b) => {
+      let aValue = a[filters.sortBy];
+      let bValue = b[filters.sortBy];
+
+      if (filters.sortBy === "date") {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      } else if (filters.sortBy === "productPrice") {
+        aValue = parseInt(aValue.replace(/[^0-9]/g, "")) || 0;
+        bValue = parseInt(bValue.replace(/[^0-9]/g, "")) || 0;
+      } else if (filters.sortBy === "productQuantity") {
+        aValue = parseInt(aValue) || 0;
+        bValue = parseInt(bValue) || 0;
+      } else {
+        aValue = String(aValue || "").toLowerCase();
+        bValue = String(bValue || "").toLowerCase();
+      }
+
+      if (aValue < bValue) return filters.sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return filters.sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
   };
 
   const colorChange = (color) => {
@@ -236,48 +287,54 @@ const Task = () => {
     }
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    // Apply status filter
-    const matchesStatus =
-      !filters.status || task.design_status?.toLowerCase() === filters.status;
+  const filteredTasks = sortTasks(
+    tasks.filter((task) => {
+      const matchesStatus =
+        !filters.status || task.design_status === filters.status;
 
-    // Apply date filter
-    const matchesDate = !filters.date || task.date === filters.date;
+      const matchesDate =
+        !filters.date ||
+        (() => {
+          const taskDate = new Date(task.date).toISOString().split("T")[0];
+          return taskDate === filters.date;
+        })();
 
-    // Apply simple search across all fields
-    const matchesSearch =
-      !debouncedSearchKey ||
-      task.productName
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.assignedBy
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.customer_name
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.company_name
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.assined_process
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.design_status
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.assinedby_comment
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.customer_design_comment
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.sale_by?.toLowerCase()?.includes(debouncedSearchKey.toLowerCase()) ||
-      task.productPrice
-        ?.toLowerCase()
-        ?.includes(debouncedSearchKey.toLowerCase());
+      const matchesSearch =
+        !debouncedSearchKey ||
+        task.productName
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.assignedBy
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.customer_name
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.company_name
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.assined_process
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.design_status
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.assinedby_comment
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.customer_design_comment
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.sale_by
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase()) ||
+        task.productPrice
+          ?.toLowerCase()
+          ?.includes(debouncedSearchKey.toLowerCase());
 
-    return matchesStatus && matchesDate && matchesSearch;
-  });
+      return matchesStatus && matchesDate && matchesSearch;
+    })
+  );
 
   const handleOpenModal = (task) => {
     setSelectedTask(task);
@@ -546,6 +603,17 @@ const Task = () => {
             >
               Refresh
             </Button>
+            <Button
+              fontSize={{ base: "14px", md: "14px" }}
+              paddingX={{ base: "10px", md: "12px" }}
+              onClick={clearAllFilters}
+              color="#dc2626"
+              borderColor="#dc2626"
+              variant="outline"
+              className="w-full md:w-auto"
+            >
+              Clear Filters
+            </Button>
           </div>
         </div>
 
@@ -559,9 +627,9 @@ const Task = () => {
               onChange={(e) => handleFilterChange("status", e.target.value)}
               className="w-full md:w-[150px]"
             >
-              <option value="pending">Pending</option>
-              <option value="underprocessing">Under Processing</option>
-              <option value="completed">Completed</option>
+              <option value="Pending">Pending</option>
+              <option value="UnderProcessing">Under Processing</option>
+              <option value="Completed">Completed</option>
             </Select>
 
             <Input
@@ -571,6 +639,35 @@ const Task = () => {
               onChange={(e) => handleFilterChange("date", e.target.value)}
               className="w-full md:w-[200px]"
             />
+
+            <Select
+              placeholder="Sort by"
+              value={filters.sortBy}
+              fontSize="sm"
+              onChange={(e) => handleFilterChange("sortBy", e.target.value)}
+              className="w-full md:w-[150px]"
+            >
+              <option value="date">Date</option>
+              <option value="productName">Product Name</option>
+              <option value="productPrice">Price</option>
+              <option value="productQuantity">Quantity</option>
+              <option value="design_status">Status</option>
+              <option value="assignedBy">Assigned By</option>
+            </Select>
+
+            {filters.sortBy && (
+              <Select
+                value={filters.sortOrder}
+                fontSize="sm"
+                onChange={(e) =>
+                  handleFilterChange("sortOrder", e.target.value)
+                }
+                className="w-full md:w-[120px]"
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </Select>
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -670,379 +767,290 @@ const Task = () => {
         </Box>
       ) : (
         <VStack spacing={5}>
-          {filteredTasks.map((task) => (
+          {filteredTasks.length === 0 ? (
             <Box
-              key={task._id}
-              borderWidth="1px"
-              borderRadius="lg"
-              boxShadow="lg"
-              bg="white"
-              p={4}
-              w="100%"
-              position="relative"
+              display="flex"
+              flexDirection="column"
+              justifyContent="center"
+              alignItems="center"
+              height="200px"
+              textAlign="center"
             >
-              {/* Left colored bar */}
+              <Text fontSize="lg" color="gray.500" mb={2}>
+                No tasks found
+              </Text>
+              <Text fontSize="sm" color="gray.400">
+                {filters.status || filters.date || debouncedSearchKey
+                  ? "Try adjusting your filters or search criteria"
+                  : "No tasks available at the moment"}
+              </Text>
+            </Box>
+          ) : (
+            filteredTasks.map((task) => (
               <Box
-                position="absolute"
-                top={0}
-                left={0}
-                h="100%"
-                w={2}
-                bg={colorChange(task.design_status)}
-                borderRadius="md"
-              />
-
-              <HStack
-                justify="space-between"
-                mb={3}
-                flexWrap="wrap"
-                align="start"
+                key={task._id}
+                borderWidth="1px"
+                borderRadius="lg"
+                boxShadow="lg"
+                bg="white"
+                p={4}
+                w="100%"
+                position="relative"
               >
-                <Text fontWeight="bold" fontSize="lg">
-                  {task?.productName}
-                </Text>
+                {/* Left colored bar */}
+                <Box
+                  position="absolute"
+                  top={0}
+                  left={0}
+                  h="100%"
+                  w={2}
+                  bg={colorChange(task.design_status)}
+                  borderRadius="md"
+                />
 
-                <VStack align="start">
-                  {["acc", "account", "accountant"].includes(
-                    role.toLowerCase()
-                  ) ? (
-                    <Badge
-                      colorScheme={colorChange(task.design_status)}
-                      fontSize="sm"
-                    >
-                      <strong>Task:</strong> {task?.design_status}
-                      {task?.design_status !== "UnderProcessing" ? "D" : ""}
-                    </Badge>
-                  ) : (
-                    <Badge
-                      colorScheme={colorChange(task.design_status)}
-                      fontSize="sm"
-                    >
-                      <strong>Task:</strong> {task?.design_status}
-                    </Badge>
-                  )}
-
-                  {["acc", "account", "accountant", "dispatch", "dis"].includes(
-                    role.toLowerCase()
-                  ) &&
-                  task?.token_amt &&
-                  task?.token_status === false ? (
-                    <Badge colorScheme="orange" fontSize="sm">
-                      Token Amount : Pending
-                    </Badge>
-                  ) : null}
-
-                  {["acc", "account", "accountant", "dispatch", "dis"].includes(
-                    role.toLowerCase()
-                  ) &&
-                  task?.token_amt &&
-                  task?.token_status ? (
-                    <Badge colorScheme="green" fontSize="sm">
-                      Token Amount : Paid
-                    </Badge>
-                  ) : null}
-
-                  {["acc", "account", "accountant", "dispatch", "dis"].includes(
-                    role.toLowerCase()
-                  ) && task?.isTokenVerify === false ? (
-                    <Badge colorScheme="orange" fontSize="sm">
-                      Token Verification : Pending
-                    </Badge>
-                  ) : null}
-
-                  {["acc", "account", "accountant", "dispatch", "dis"].includes(
-                    role.toLowerCase()
-                  ) && task?.isTokenVerify ? (
-                    <Badge colorScheme="green" fontSize="sm">
-                      Token Verification : Verified
-                    </Badge>
-                  ) : null}
-
-                  {["acc", "account", "accountant", "dispatch", "dis"].includes(
-                    role.toLowerCase()
-                  ) && task?.allsale?.half_payment_status ? (
-                    <Badge colorScheme="green" fontSize="sm">
-                      Half Payment Status : {task?.allsale?.half_payment_status}
-                    </Badge>
-                  ) : null}
-
-                  {["acc", "account", "accountant", "dispatch", "dis"].includes(
-                    role.toLowerCase()
-                  ) && task?.paymet_status ? (
-                    <Badge
-                      colorScheme={colorChange(task?.paymet_status)}
-                      fontSize="sm"
-                    >
-                      <strong>Payment:</strong>{" "}
-                      {task?.paymet_status === "Paied"
-                        ? "Paid"
-                        : task?.paymet_status}
-                    </Badge>
-                  ) : null}
-
-                  {["acc", "account", "accountant", "dispatch", "dis"].includes(
-                    role.toLowerCase()
-                  ) && task?.payment_verify ? (
-                    <Badge
-                      colorScheme={colorChange(task.payment_verify)}
-                      fontSize="sm"
-                    >
-                      <strong>Payment Verification:</strong>{" "}
-                      {task?.payment_verify ? "Verified" : "Not Verfied"}
-                    </Badge>
-                  ) : null}
-                </VStack>
-              </HStack>
-
-              {/* Divider */}
-              <Divider />
-
-              <HStack
-                justify="space-between"
-                spacing={3}
-                mt={3}
-                flexWrap="wrap"
-                align="start"
-                gap={4}
-              >
-                <VStack align="start" w={{ base: "100%", md: "48%" }}>
-                  {role == "Accountant" ||
-                  role == "Sales" ||
-                  role == "admin" ? (
-                    <Text fontSize="sm">
-                      <strong>Product Price:</strong> {task.productPrice}
-                    </Text>
-                  ) : null}
-
-                  <Text fontSize="sm">
-                    <strong>Quantity:</strong> {task.productQuantity}
-                  </Text>
-                  {["acc", "account", "accountant", "dispatch", "dis"].includes(
-                    role.toLowerCase()
-                  ) ? (
-                    <>
-                      <Text fontSize="sm">
-                        <strong>Customer:</strong> {task.customer_name}
-                      </Text>
-                      <Text fontSize="sm">
-                        <strong>Sale By:</strong> {task.sale_by}
-                      </Text>
-                      <Text fontSize="sm">
-                        <strong>Assigned By:</strong> {task.assignedBy}
-                      </Text>
-                    </>
-                  ) : null}
-                </VStack>
-                <VStack
-                  align={{ base: "start", md: "end" }}
-                  w={{ base: "100%", md: "48%" }}
-                >
-                  <Text fontSize="sm">
-                    <strong>Assigned Process:</strong> {task?.assined_process}
-                  </Text>
-                  {task?.assinedby_comment ? (
-                    <Text fontSize="sm">
-                      <strong>Remarks:</strong> {task?.assinedby_comment}
-                    </Text>
-                  ) : null}
-
-                  {task?.sample_bom_name ? (
-                    <Text fontSize="sm" color="blue">
-                      <strong className="text-black"> Sample BOM Name:</strong>{" "}
-                      {task?.sample_bom_name}
-                    </Text>
-                  ) : null}
-                  {task?.bom_name ? (
-                    <Text fontSize="sm" color="blue">
-                      <strong className="text-black">BOM Name:</strong>{" "}
-                      {task?.bom_name}
-                    </Text>
-                  ) : null}
-                  {role != "Production" && task?.token_ss ? (
-                    <Text
-                      className="text-blue-500 underline text-sm cursor-pointer"
-                      onClick={() =>
-                        handlePayment(
-                          task?.sale_id,
-                          task?.token_ss,
-                          task?.isTokenVerify,
-                          task?.id,
-                          "token"
-                        )
-                      }
-                    >
-                      {" "}
-                      View Token Proof{" "}
-                    </Text>
-                  ) : null}
-                  {role != "Production" && task?.allsale?.half_payment_image ? (
-                    <Text
-                      className="text-blue-500 underline text-sm cursor-pointer"
-                      onClick={() => {
-                        onViewHalfPaymentssOpen();
-                        sethalfAmountId(task);
-                      }}
-                    >
-                      {" "}
-                      View Half payment{" "}
-                    </Text>
-                  ) : null}
-                </VStack>
-              </HStack>
-
-              {/* Footer */}
-              <Divider my={3} />
-              {role.toLowerCase().includes("prod") ? (
-                <HStack className="space-x-3">
-                  {task?.design_status === "Pending" ? (
-                    <Button
-                      type="button"
-                      colorScheme="teal"
-                      size="sm"
-                      onClick={() => handleAccept(task?.id)}
-                      disabled={isSubmitting}
-                    >
-                      Accept Task
-                    </Button>
-                  ) : null}
-
-                  {task?.bom.length === 2 ? (
-                    <Badge colorScheme="green" fontSize="sm">
-                      <strong>BOM:</strong> Created
-                    </Badge>
-                  ) : (
-                    <Button
-                      colorScheme="teal"
-                      size="sm"
-                      onClick={() => handleBOM(task?.sale_id)}
-                    >
-                      Create BOM
-                    </Button>
-                  )}
-
-                  {task?.design_status != "Completed" ? (
-                    <Button
-                      colorScheme="orange"
-                      leftIcon={<FaCheck />}
-                      size="sm"
-                      onClick={() => handleDone(task?.id)}
-                    >
-                      Task Done
-                    </Button>
-                  ) : null}
-
-                  {role == "Production" && task?.sample_image ? (
-                    <Button
-                      colorScheme="teal"
-                      size="sm"
-                      onClick={() => handleSampleImage(task?.sample_image)}
-                    >
-                      Preview Sample Image
-                    </Button>
-                  ) : null}
-                </HStack>
-              ) : ["accountant", "acc"].includes(role.toLowerCase()) ? (
                 <HStack
                   justify="space-between"
-                  mt={3}
+                  mb={3}
                   flexWrap="wrap"
-                  align="center"
-                  gap={4}
+                  align="start"
                 >
-                  {task?.design_status === "Pending" ? (
-                    <Button
-                      type="button"
-                      colorScheme="teal"
-                      size="sm"
-                      onClick={() => handleAccept(task?.id)}
-                      disabled={isSubmitting}
-                    >
-                      Accept Task
-                    </Button>
-                  ) : null}
-
-                  {task?.design_approval === "Approved" ? (
-                    <Button
-                      bgColor="white"
-                      _hover={{ bgColor: "purple.500" }}
-                      className="border border-purple-500 hover:text-white"
-                      w={{ base: "100%", md: "auto" }}
-                      onClick={() =>
-                        handleTokenClick(task?.sale_id, task?.token_amt)
-                      }
-                    >
-                      Add Token Amount{" "}
-                    </Button>
-                  ) : null}
-
-                  {task?.isTokenVerify ? (
-                    <Button
-                      bgColor="white"
-                      leftIcon={<FaCloudUploadAlt />}
-                      _hover={{ bgColor: "blue.500" }}
-                      className="border border-blue-500 hover:text-white"
-                      onClick={() =>
-                        handleInvoiceUpload(task?.sale_id, task?.invoice)
-                      }
-                      width={{ base: "full", sm: "auto" }}
-                    >
-                      Upload Invoice
-                    </Button>
-                  ) : null}
-
-                  {task?.isSampleApprove && (
-                    <Button
-                      bgColor="white"
-                      _hover={{ bgColor: "blue.500" }}
-                      className="border border-blue-500 hover:text-white"
-                      onClick={() => {
-                        half_payment.onOpen();
-                        sethalfAmountId(task);
-                      }}
-                      width={{ base: "full", sm: "auto" }}
-                    >
-                      Add half Payment
-                    </Button>
-                  )}
-
-                  {task?.customer_pyement_ss ? (
-                    <Button
-                      bgColor="white"
-                      leftIcon={<IoEyeSharp />}
-                      _hover={{ bgColor: "orange.500" }}
-                      className="border border-orange-500 hover:text-white"
-                      onClick={() =>
-                        handlePayment(
-                          task?.sale_id,
-                          task?.customer_pyement_ss,
-                          task?.payment_verify,
-                          task?.id,
-                          "payment"
-                        )
-                      }
-                      width={{ base: "full", sm: "auto" }}
-                    >
-                      View Payment
-                    </Button>
-                  ) : null}
-
-                  <Text fontSize="sm">
-                    <strong>Date:</strong> {task.date}
+                  <Text fontWeight="bold" fontSize="lg">
+                    {task?.productName}
                   </Text>
-                </HStack>
-              ) : (
-                <HStack
-                  justify="space-between"
-                  mt={3}
-                  flexWrap="wrap"
-                  align="center"
-                  gap={4}
-                >
+
                   <VStack align="start">
+                    {["acc", "account", "accountant"].includes(
+                      role.toLowerCase()
+                    ) ? (
+                      <Badge
+                        colorScheme={colorChange(task.design_status)}
+                        fontSize="sm"
+                      >
+                        <strong>Task:</strong> {task?.design_status}
+                        {task?.design_status !== "UnderProcessing" ? "D" : ""}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        colorScheme={colorChange(task.design_status)}
+                        fontSize="sm"
+                      >
+                        <strong>Task:</strong> {task?.design_status}
+                      </Badge>
+                    )}
+
+                    {[
+                      "acc",
+                      "account",
+                      "accountant",
+                      "dispatch",
+                      "dis",
+                    ].includes(role.toLowerCase()) &&
+                    task?.token_amt &&
+                    task?.token_status === false ? (
+                      <Badge colorScheme="orange" fontSize="sm">
+                        Token Amount : Pending
+                      </Badge>
+                    ) : null}
+
+                    {[
+                      "acc",
+                      "account",
+                      "accountant",
+                      "dispatch",
+                      "dis",
+                    ].includes(role.toLowerCase()) &&
+                    task?.token_amt &&
+                    task?.token_status ? (
+                      <Badge colorScheme="green" fontSize="sm">
+                        Token Amount : Paid
+                      </Badge>
+                    ) : null}
+
+                    {[
+                      "acc",
+                      "account",
+                      "accountant",
+                      "dispatch",
+                      "dis",
+                    ].includes(role.toLowerCase()) &&
+                    task?.isTokenVerify === false ? (
+                      <Badge colorScheme="orange" fontSize="sm">
+                        Token Verification : Pending
+                      </Badge>
+                    ) : null}
+
+                    {[
+                      "acc",
+                      "account",
+                      "accountant",
+                      "dispatch",
+                      "dis",
+                    ].includes(role.toLowerCase()) && task?.isTokenVerify ? (
+                      <Badge colorScheme="green" fontSize="sm">
+                        Token Verification : Verified
+                      </Badge>
+                    ) : null}
+
+                    {[
+                      "acc",
+                      "account",
+                      "accountant",
+                      "dispatch",
+                      "dis",
+                    ].includes(role.toLowerCase()) &&
+                    task?.allsale?.half_payment_status ? (
+                      <Badge colorScheme="green" fontSize="sm">
+                        Half Payment Status :{" "}
+                        {task?.allsale?.half_payment_status}
+                      </Badge>
+                    ) : null}
+
+                    {[
+                      "acc",
+                      "account",
+                      "accountant",
+                      "dispatch",
+                      "dis",
+                    ].includes(role.toLowerCase()) && task?.paymet_status ? (
+                      <Badge
+                        colorScheme={colorChange(task?.paymet_status)}
+                        fontSize="sm"
+                      >
+                        <strong>Payment:</strong>{" "}
+                        {task?.paymet_status === "Paied"
+                          ? "Paid"
+                          : task?.paymet_status}
+                      </Badge>
+                    ) : null}
+
+                    {[
+                      "acc",
+                      "account",
+                      "accountant",
+                      "dispatch",
+                      "dis",
+                    ].includes(role.toLowerCase()) && task?.payment_verify ? (
+                      <Badge
+                        colorScheme={colorChange(task.payment_verify)}
+                        fontSize="sm"
+                      >
+                        <strong>Payment Verification:</strong>{" "}
+                        {task?.payment_verify ? "Verified" : "Not Verfied"}
+                      </Badge>
+                    ) : null}
+                  </VStack>
+                </HStack>
+
+                <Divider />
+
+                <HStack
+                  justify="space-between"
+                  spacing={3}
+                  mt={3}
+                  flexWrap="wrap"
+                  align="start"
+                  gap={4}
+                >
+                  <VStack align="start" w={{ base: "100%", md: "48%" }}>
+                    {role == "Accountant" ||
+                    role == "Sales" ||
+                    role == "admin" ? (
+                      <Text fontSize="sm">
+                        <strong>Product Price:</strong> {task.productPrice}
+                      </Text>
+                    ) : null}
+
+                    <Text fontSize="sm">
+                      <strong>Quantity:</strong> {task.productQuantity}
+                    </Text>
+                    {[
+                      "acc",
+                      "account",
+                      "accountant",
+                      "dispatch",
+                      "dis",
+                    ].includes(role.toLowerCase()) ? (
+                      <>
+                        <Text fontSize="sm">
+                          <strong>Customer:</strong> {task.customer_name}
+                        </Text>
+                        <Text fontSize="sm">
+                          <strong>Sale By:</strong> {task.sale_by}
+                        </Text>
+                        <Text fontSize="sm">
+                          <strong>Assigned By:</strong> {task.assignedBy}
+                        </Text>
+                      </>
+                    ) : null}
+                  </VStack>
+                  <VStack
+                    align={{ base: "start", md: "end" }}
+                    w={{ base: "100%", md: "48%" }}
+                  >
+                    <Text fontSize="sm">
+                      <strong>Assigned Process:</strong> {task?.assined_process}
+                    </Text>
+                    {task?.assinedby_comment ? (
+                      <Text fontSize="sm">
+                        <strong>Remarks:</strong> {task?.assinedby_comment}
+                      </Text>
+                    ) : null}
+
+                    {task?.sample_bom_name ? (
+                      <Text fontSize="sm" color="blue">
+                        <strong className="text-black">
+                          {" "}
+                          Sample BOM Name:
+                        </strong>{" "}
+                        {task?.sample_bom_name}
+                      </Text>
+                    ) : null}
+                    {task?.bom_name ? (
+                      <Text fontSize="sm" color="blue">
+                        <strong className="text-black">BOM Name:</strong>{" "}
+                        {task?.bom_name}
+                      </Text>
+                    ) : null}
+                    {role != "Production" && task?.token_ss ? (
+                      <Text
+                        className="text-blue-500 underline text-sm cursor-pointer"
+                        onClick={() =>
+                          handlePayment(
+                            task?.sale_id,
+                            task?.token_ss,
+                            task?.isTokenVerify,
+                            task?.id,
+                            "token"
+                          )
+                        }
+                      >
+                        {" "}
+                        View Token Proof{" "}
+                      </Text>
+                    ) : null}
+                    {role != "Production" &&
+                    task?.allsale?.half_payment_image ? (
+                      <Text
+                        className="text-blue-500 underline text-sm cursor-pointer"
+                        onClick={() => {
+                          onViewHalfPaymentssOpen();
+                          sethalfAmountId(task);
+                        }}
+                      >
+                        {" "}
+                        View Half payment{" "}
+                      </Text>
+                    ) : null}
+                  </VStack>
+                </HStack>
+
+                {/* Footer */}
+                <Divider my={3} />
+                {role.toLowerCase().includes("prod") ? (
+                  <HStack className="space-x-3">
                     {task?.design_status === "Pending" ? (
                       <Button
                         type="button"
-                        leftIcon={<FaCheck />}
                         colorScheme="teal"
                         size="sm"
                         onClick={() => handleAccept(task?.id)}
@@ -1050,74 +1058,221 @@ const Task = () => {
                       >
                         Accept Task
                       </Button>
-                    ) : task?.design_status === "UnderProcessing" ? (
+                    ) : null}
+
+                    {task?.bom.length === 2 ? (
+                      <Badge colorScheme="green" fontSize="sm">
+                        <strong>BOM:</strong> Created
+                      </Badge>
+                    ) : (
                       <Button
-                        leftIcon={<FaUpload />}
                         colorScheme="teal"
                         size="sm"
-                        onClick={() => handleOpenModal(task)}
+                        onClick={() => handleBOM(task?.sale_id)}
                       >
-                        Upload File
+                        Create BOM
                       </Button>
-                    ) : task?.design_approval === "Approve" ? (
-                      <Badge colorScheme="green" fontSize="sm">
-                        Customer Approval: {task?.design_approval}
-                      </Badge>
-                    ) : task?.design_approval === "Reject" ? (
-                      <VStack align="start">
-                        <Badge colorScheme="red" fontSize="sm">
-                          Customer Approval: {task?.design_approval}
-                        </Badge>
-                        <Text className="text-red-500">
-                          Feedback: {task?.customer_design_comment}
-                        </Text>
+                    )}
+
+                    {task?.design_status != "Completed" ? (
+                      <Button
+                        colorScheme="orange"
+                        leftIcon={<FaCheck />}
+                        size="sm"
+                        onClick={() => handleDone(task?.id)}
+                      >
+                        Task Done
+                      </Button>
+                    ) : null}
+
+                    {role == "Production" && task?.sample_image ? (
+                      <Button
+                        colorScheme="teal"
+                        size="sm"
+                        onClick={() => handleSampleImage(task?.sample_image)}
+                      >
+                        Preview Sample Image
+                      </Button>
+                    ) : null}
+                  </HStack>
+                ) : ["accountant", "acc"].includes(role.toLowerCase()) ? (
+                  <HStack
+                    justify="space-between"
+                    mt={3}
+                    flexWrap="wrap"
+                    align="center"
+                    gap={4}
+                  >
+                    {task?.design_status === "Pending" ? (
+                      <Button
+                        type="button"
+                        colorScheme="teal"
+                        size="sm"
+                        onClick={() => handleAccept(task?.id)}
+                        disabled={isSubmitting}
+                      >
+                        Accept Task
+                      </Button>
+                    ) : null}
+
+                    {task?.design_approval === "Approved" ? (
+                      <Button
+                        bgColor="white"
+                        _hover={{ bgColor: "purple.500" }}
+                        className="border border-purple-500 hover:text-white"
+                        w={{ base: "100%", md: "auto" }}
+                        onClick={() =>
+                          handleTokenClick(task?.sale_id, task?.token_amt)
+                        }
+                      >
+                        Add Token Amount{" "}
+                      </Button>
+                    ) : null}
+
+                    {task?.isTokenVerify ? (
+                      <Button
+                        bgColor="white"
+                        leftIcon={<FaCloudUploadAlt />}
+                        _hover={{ bgColor: "blue.500" }}
+                        className="border border-blue-500 hover:text-white"
+                        onClick={() =>
+                          handleInvoiceUpload(task?.sale_id, task?.invoice)
+                        }
+                        width={{ base: "full", sm: "auto" }}
+                      >
+                        Upload Invoice
+                      </Button>
+                    ) : null}
+
+                    {task?.isSampleApprove && (
+                      <Button
+                        bgColor="white"
+                        _hover={{ bgColor: "blue.500" }}
+                        className="border border-blue-500 hover:text-white"
+                        onClick={() => {
+                          half_payment.onOpen();
+                          sethalfAmountId(task);
+                        }}
+                        width={{ base: "full", sm: "auto" }}
+                      >
+                        Add half Payment
+                      </Button>
+                    )}
+
+                    {task?.customer_pyement_ss ? (
+                      <Button
+                        bgColor="white"
+                        leftIcon={<IoEyeSharp />}
+                        _hover={{ bgColor: "orange.500" }}
+                        className="border border-orange-500 hover:text-white"
+                        onClick={() =>
+                          handlePayment(
+                            task?.sale_id,
+                            task?.customer_pyement_ss,
+                            task?.payment_verify,
+                            task?.id,
+                            "payment"
+                          )
+                        }
+                        width={{ base: "full", sm: "auto" }}
+                      >
+                        View Payment
+                      </Button>
+                    ) : null}
+
+                    <Text fontSize="sm">
+                      <strong>Date:</strong> {task.displayDate}
+                    </Text>
+                  </HStack>
+                ) : (
+                  <HStack
+                    justify="space-between"
+                    mt={3}
+                    flexWrap="wrap"
+                    align="center"
+                    gap={4}
+                  >
+                    <VStack align="start">
+                      {task?.design_status === "Pending" ? (
+                        <Button
+                          type="button"
+                          leftIcon={<FaCheck />}
+                          colorScheme="teal"
+                          size="sm"
+                          onClick={() => handleAccept(task?.id)}
+                          disabled={isSubmitting}
+                        >
+                          Accept Task
+                        </Button>
+                      ) : task?.design_status === "UnderProcessing" ? (
                         <Button
                           leftIcon={<FaUpload />}
                           colorScheme="teal"
                           size="sm"
                           onClick={() => handleOpenModal(task)}
                         >
-                          Re-Upload File
+                          Upload File
                         </Button>
+                      ) : task?.design_approval === "Approve" ? (
+                        <Badge colorScheme="green" fontSize="sm">
+                          Customer Approval: {task?.design_approval}
+                        </Badge>
+                      ) : task?.design_approval === "Reject" ? (
+                        <VStack align="start">
+                          <Badge colorScheme="red" fontSize="sm">
+                            Customer Approval: {task?.design_approval}
+                          </Badge>
+                          <Text className="text-red-500">
+                            Feedback: {task?.customer_design_comment}
+                          </Text>
+                          <Button
+                            leftIcon={<FaUpload />}
+                            colorScheme="teal"
+                            size="sm"
+                            onClick={() => handleOpenModal(task)}
+                          >
+                            Re-Upload File
+                          </Button>
+                        </VStack>
+                      ) : null}
+
+                      {task?.designFile ? (
+                        <Text fontSize="sm">
+                          <strong>Uploaded File:</strong>{" "}
+                          <a
+                            href={task.designFile}
+                            className="text-blue-500 underline"
+                            target="_blank"
+                          >
+                            preview
+                          </a>
+                        </Text>
+                      ) : null}
+                    </VStack>
+
+                    {task?.sale_design_approve == "Approve" ? (
+                      <Badge colorScheme="green" fontSize="sm">
+                        Sales Design Approval: {task.sale_design_approve}
+                      </Badge>
+                    ) : task?.sale_design_approve == "Reject" ? (
+                      <VStack align="start">
+                        <Badge colorScheme="red" fontSize="sm">
+                          Sales Design Approval: {task.sale_design_approve}
+                        </Badge>
+                        <Text color="red.500">
+                          Feedback: {task.sale_design_comment}
+                        </Text>
                       </VStack>
                     ) : null}
 
-                    {task?.designFile ? (
-                      <Text fontSize="sm">
-                        <strong>Uploaded File:</strong>{" "}
-                        <a
-                          href={task.designFile}
-                          className="text-blue-500 underline"
-                          target="_blank"
-                        >
-                          preview
-                        </a>
-                      </Text>
-                    ) : null}
-                  </VStack>
-
-                  {task?.sale_design_approve == "Approve" ? (
-                    <Badge colorScheme="green" fontSize="sm">
-                      Sales Design Approval: {task.sale_design_approve}
-                    </Badge>
-                  ) : task?.sale_design_approve == "Reject" ? (
-                    <VStack align="start">
-                      <Badge colorScheme="red" fontSize="sm">
-                        Sales Design Approval: {task.sale_design_approve}
-                      </Badge>
-                      <Text color="red.500">
-                        Feedback: {task.sale_design_comment}
-                      </Text>
-                    </VStack>
-                  ) : null}
-
-                  <Text fontSize="sm">
-                    <strong>Date:</strong> {task.date}
-                  </Text>
-                </HStack>
-              )}
-            </Box>
-          ))}
+                    <Text fontSize="sm">
+                      <strong>Date:</strong> {task.displayDate}
+                    </Text>
+                  </HStack>
+                )}
+              </Box>
+            ))
+          )}
         </VStack>
       )}
 
