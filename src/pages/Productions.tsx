@@ -311,7 +311,7 @@ const   Productions = () => {
                       {purchase?.Status === "Approved" && purchase?.customer_approve && (
                         <Badge
                           colorScheme={
-                            purchase?.customer_approve === "Approve"
+                            purchase?.customer_approve === "Approved  "
                               ? "green"
                               : purchase?.customer_approve === "Pending"
                                 ? "orange"
