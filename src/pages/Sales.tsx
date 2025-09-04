@@ -336,6 +336,8 @@ const Sales = () => {
     setComment(comment);
     remarksDisclosure.onOpen();
   };
+ 
+  // console.log(filteredPurchases)
 
   const calculateTotalPrice = (price: number, qty: number, gst: number) => {
     const basePrice = price * qty;
