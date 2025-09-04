@@ -521,7 +521,7 @@ const Task = () => {
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
               <Input
-                placeholder="Search tasks..."
+                placeholder="      Search tasks..."   
                 value={filters.search || ""}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
                 className="pl-10 pr-10"
@@ -942,24 +942,22 @@ const Task = () => {
                     </Button>
                   ) : null}
 
-                  {task?.bom.length === 1 ? (
+                  {task?.bom.length === 2 ? (
                     <Badge colorScheme="green" fontSize="sm">
                       <strong>BOM:</strong> Created
                     </Badge>
                   ) : (
-                    task?.design_status === "UnderProcessing" && (
-                      <Button
-                        colorScheme="teal"
-                        size="sm"
-                        onClick={() => handleBOM(task?.sale_id)}
-                      >
-                        Create BOM 
-                      </Button>
-                    )
+                    <Button
+                      colorScheme="teal"
+                      size="sm"
+                      onClick={() => handleBOM(task?.sale_id)}
+                    >
+                      Create BOM
+                    </Button> 
                   )}
 
+                  {task?.design_status !== "Completed" ? (
 
-                  {task?.bom.length === 1 && task?.design_status !== "Completed" ? (
                     <Button
                       colorScheme="orange"
                       leftIcon={<FaCheck />}
@@ -970,8 +968,8 @@ const Task = () => {
                     </Button>
                   ) : null}
 
-
                   {role === "Production" && task?.sample_image ? (
+
                     <Button
                       colorScheme="teal"
                       size="sm"
