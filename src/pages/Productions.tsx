@@ -99,7 +99,7 @@ const   Productions = () => {
 
   useEffect(() => {
     fetchPurchases();
-  }, [pages, limit]);
+  }, [pages,limit]);
 
   useEffect(() => {
     let filteredData = purchases.filter((purchase) => {
@@ -364,7 +364,7 @@ const   Productions = () => {
                   <HStack justify="space-between" spacing={3} mt={3}>
                     <VStack align="start">
                       
-                      {(role == "Accountant" || role == "Sales" || role == "admin") ? (
+                      {(role === "Accountant" || role === "Sales" || role === "admin") ? (
                         <Text fontSize="sm">
                           <strong>Price:</strong> {purchase?.price}
                         </Text>

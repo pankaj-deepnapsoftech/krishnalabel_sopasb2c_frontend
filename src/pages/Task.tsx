@@ -255,13 +255,13 @@ const Task = () => {
       setPage(1); // Reset to first page when filters change
       fetchTasks();
     }
-  }, [debouncedSearchKey, filters.status, filters.date, limit]);
+  }, [debouncedSearchKey, filters.status, filters.date, limit, cookies?.access_token]);
 
   useEffect(() => {
     if (cookies?.access_token) {
       fetchTasks();
     }
-  }, [page]); // Only refetch when page changes
+  }, [page, cookies?.access_token]); // Only refetch when page changes
 
   // Debounce search input
   useEffect(() => {
@@ -544,14 +544,15 @@ const Task = () => {
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
               <Input
-                placeholder="      Search tasks..."   
+                placeholder="Search tasks..."   
                 value={filters.search || ""}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
-                className="pl-10 pr-10"
+                className="pl-20 pr-10"
                 _focus={{
                   borderColor: "#0d9488",
                   boxShadow: "0 0 0 1px #14b8a6",
                 }}
+                paddingLeft="40px"
                 transition="all 0.2s"
                 fontSize="sm"
               />
@@ -620,7 +621,7 @@ const Task = () => {
         </div>
 
         {/* Filters Row */}
-        <div className="flex flex-col md:flex-row justify-between gap-4">
+        <div className="flex flex-col md:flex-row justify-between mt-2 gap-4">
           <div className="flex flex-col md:flex-row gap-4 flex-1">
             <Select
               placeholder="Status"
@@ -1053,36 +1054,52 @@ const Task = () => {
                     >
                       Accept Task
                     </Button>
-                  ) : null}
-
-                  {task?.bom.length === 2 ? (
-                    <Badge colorScheme="green" fontSize="sm">
-                      <strong>BOM:</strong> Created
-                    </Badge>
                   ) : (
-                    <Button
-                      colorScheme="teal"
-                      size="sm"
-                      onClick={() => handleBOM(task?.sale_id)}
-                    >
-                      Create BOM
-                    </Button> 
+                    <>
+                      {task?.bom.length === 2 ? (
+                        <Badge colorScheme="green" fontSize="sm">
+                          <strong>BOM:</strong> Created
+                        </Badge>
+                      ) : (
+                        task?.bom.length === 0 ? (
+                              <Button
+                                colorScheme="teal"
+                                size="sm"
+                                onClick={() => handleBOM(task?.sale_id)}
+                              >
+                               Generate Sample Bom
+                              </Button>
+                        ) : (
+                                task?.allsale?.half_payment_approve ? (
+                                  <Button
+                                    colorScheme="teal"
+                                    size="sm"
+                                    onClick={() => handleBOM(task?.sale_id)}
+                                  >
+                                    Generate Production BOM
+                                  </Button>
+                                ) : (
+                                  <Text fontSize="sm"  color="gray.600">
+                                    Awaiting half-payment approval from the accounting department.
+                                  </Text>
+                                )
+                        )
+                      )}
+
+                      {/* {task?.design_status !== "Completed" && (
+                        <Button
+                          colorScheme="orange"
+                          leftIcon={<FaCheck />}
+                          size="sm"
+                          onClick={() => handleDone(task?.id)}
+                        >
+                          Task Done
+                        </Button>
+                      )} */}
+                    </>
                   )}
 
-                  {task?.design_status !== "Completed" ? (
-
-                    <Button
-                      colorScheme="orange"
-                      leftIcon={<FaCheck />}
-                      size="sm"
-                      onClick={() => handleDone(task?.id)}
-                    >
-                      Task Done
-                    </Button>
-                  ) : null}
-
-                  {role === "Production" && task?.sample_image ? (
-
+                  {role === "Production" && task?.sample_image && (
                     <Button
                       colorScheme="teal"
                       size="sm"
@@ -1090,8 +1107,9 @@ const Task = () => {
                     >
                       Preview Sample Image
                     </Button>
-                  ) : null}
+                  )}
                 </HStack>
+
               ) : ["accountant", "acc"].includes(role.toLowerCase()) ? (
                 <HStack
                   justify="space-between"

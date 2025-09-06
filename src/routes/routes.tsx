@@ -32,6 +32,8 @@ import Customer from "../pages/Customer";
 import Task from "../pages/Task";
 import Production from "../pages/Productions";
 import Dispatch from "../pages/Dispatch";
+import { CiGrid42 } from "react-icons/ci";
+import RepeatOrder from "../pages/RepeatOrder";
 
 
 
@@ -69,6 +71,13 @@ const routes = [
     icon: <BiSolidDiscount />,
     path: "/sales",
     element: <Sales />,
+    isSublink: false
+  },
+  {
+    name: "Repeat Order",
+    icon: <CiGrid42 />,
+    path: "/repeat-order",
+    element: <RepeatOrder />,
     isSublink: false
   },
   {
